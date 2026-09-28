@@ -2,14 +2,54 @@ import re
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import getdate
+from frappe.utils import getdate, today, validate_email_address
 
 APPROVER_ROLES = ("Headmaster", "System Manager")
 
 
+# What a parent must fill in on the public form (/apply-online), with the Swahili labels they see
+REQUIRED = {
+	"full_name": "Jina kamili la mwanafunzi",
+	"date_of_birth": "Tarehe ya kuzaliwa",
+	"parent_name": "Jina kamili la mzazi au mlezi",
+	"phone_number": "Namba ya simu ya mkononi",
+}
+MAX_LENGTH = {"full_name": "Jina la mwanafunzi", "parent_name": "Jina la mzazi au mlezi", "email": "Barua pepe"}
+
+
 class StudentAdmission(Document):
 	def validate(self):
+		if frappe.flags.in_web_form and self.is_new():
+			self.validate_application()
 		self.validate_status_change()
+
+	def validate_application(self):
+		"""The public form is for parents: their mistakes are explained in Swahili, before Frappe's own (English)
+		checks run. The phone number is kept as +255-7XXXXXXXX, the format Frappe's Phone field accepts."""
+		from smart_school.portal_utils import normalize_tz_mobile
+
+		problems = [f"Jaza: {label}." for fieldname, label in REQUIRED.items() if not str(self.get(fieldname) or "").strip()]
+		problems += [
+			f"{label} ni refu mno: herufi 140 ndizo nyingi zaidi."
+			for fieldname, label in MAX_LENGTH.items()
+			if len(str(self.get(fieldname) or "")) > 140
+		]
+		if self.phone_number:
+			phone = normalize_tz_mobile(self.phone_number)
+			if phone and is_valid_phone(f"+{phone}"):
+				self.phone_number = f"+255-{phone[3:]}"
+			else:
+				problems.append(
+					"Namba ya simu si sahihi. Andika namba ya simu ya mkononi ya Tanzania, mfano 0754 123 456."
+				)
+		if self.date_of_birth and getdate(self.date_of_birth) > getdate(today()):
+			problems.append("Tarehe ya kuzaliwa haiwezi kuwa ya baadaye.")
+		if self.email:
+			self.email = self.email.strip()
+			if not validate_email_address(self.email):
+				problems.append("Barua pepe si sahihi, mfano jina@mfano.com.")
+		if problems:
+			frappe.throw("<br>".join(problems), title="Tafadhali rekebisha")
 
 	def validate_status_change(self):
 		# Status is also settable through the API, so enforce approvers here, not only via doctype permissions
@@ -76,6 +116,16 @@ class StudentAdmission(Document):
 		):
 			if normalize_phone(guardian.phone) == phone:
 				return guardian.name
+
+
+def is_valid_phone(phone):
+	"""The same check as Frappe's Phone field, so an accepted number never fails there in English."""
+	from phonenumbers import NumberParseException, is_valid_number, parse
+
+	try:
+		return is_valid_number(parse(phone))
+	except NumberParseException:
+		return False
 
 
 def normalize_phone(phone):

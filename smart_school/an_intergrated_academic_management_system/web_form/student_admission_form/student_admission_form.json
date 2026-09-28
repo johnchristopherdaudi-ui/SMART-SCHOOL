@@ -7,20 +7,20 @@
  "allow_print": 0,
  "anonymous": 0,
  "apply_document_permissions": 0,
- "button_label": "Save",
+ "button_label": "Tuma Maombi",
  "condition_json": "[]",
  "creation": "2026-09-17 15:17:56.278132",
  "doc_type": "Student Admission",
  "docstatus": 0,
  "doctype": "Web Form",
  "idx": 0,
- "introduction_text": "Jaza fomu hii kuomba nafasi ya kujiunga. Leta cheti cha kuzaliwa cha mwanafunzi na cheti cha shule ya awali (kama kipo) shuleni ili vithibitishwe.",
+ "introduction_text": "Jaza fomu hii kuomba nafasi ya mwanafunzi kujiunga na shule. Sehemu zenye alama * ni lazima. Baada ya kutuma, leta shuleni cheti cha kuzaliwa cha mwanafunzi na cheti cha shule ya awali (kama kipo) ili vithibitishwe.",
  "is_standard": 1,
  "key_required": 0,
  "list_columns": [],
  "login_required": 0,
  "max_attachment_size": 0,
- "modified": "2026-09-30 10:00:00.000000",
+ "modified": "2026-10-01 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
  "name": "student-admission-form",
@@ -30,61 +30,65 @@
  "show_attachments": 0,
  "show_list": 0,
  "show_sidebar": 0,
- "title": "Student Admission Form",
+ "title": "Fomu ya Maombi ya Kujiunga",
  "web_form_fields": [
   {
    "allow_read_on_all_link_options": 0,
    "fieldname": "full_name",
    "fieldtype": "Data",
    "hidden": 0,
-   "label": "Full Name",
+   "label": "Jina kamili la mwanafunzi",
    "max_length": 0,
    "max_value": 0,
    "precision": "",
    "read_only": 0,
    "reqd": 1,
-   "show_in_filter": 0
+   "show_in_filter": 0,
+   "description": "Kama lilivyo kwenye cheti cha kuzaliwa"
   },
   {
    "allow_read_on_all_link_options": 0,
    "fieldname": "gender",
    "fieldtype": "Select",
    "hidden": 0,
-   "label": "Gender",
+   "label": "Jinsia",
    "max_length": 0,
    "max_value": 0,
    "options": "Male\nFemale",
    "precision": "",
    "read_only": 0,
    "reqd": 0,
-   "show_in_filter": 0
+   "show_in_filter": 0,
+   "placeholder": "Chagua"
   },
   {
    "allow_read_on_all_link_options": 0,
    "fieldname": "date_of_birth",
    "fieldtype": "Date",
    "hidden": 0,
-   "label": "Date of Birth",
+   "label": "Tarehe ya kuzaliwa",
    "max_length": 0,
    "max_value": 0,
    "precision": "",
    "read_only": 0,
    "reqd": 1,
-   "show_in_filter": 0
+   "show_in_filter": 0,
+   "description": "Chagua tarehe kwenye kalenda"
   },
   {
    "allow_read_on_all_link_options": 0,
    "fieldname": "class_applying",
    "fieldtype": "Select",
    "hidden": 0,
-   "label": "Class Applying",
+   "label": "Kidato anachoombea",
    "max_length": 0,
    "max_value": 0,
-   "options": "Form One\nForm Two\nForm Three\nForm Four",
+   "options": "",
    "precision": "",
    "read_only": 0,
    "reqd": 0,
-   "show_in_filter": 0
+   "show_in_filter": 0,
+   "placeholder": "Chagua"
   },
   {
    "allow_read_on_all_link_options": 0,
@@ -96,14 +100,15 @@
    "precision": "",
    "read_only": 0,
    "reqd": 0,
-   "show_in_filter": 0
+   "show_in_filter": 0,
+   "label": "Mzazi au mlezi"
   },
   {
    "allow_read_on_all_link_options": 0,
    "fieldname": "parent_name",
    "fieldtype": "Data",
    "hidden": 0,
-   "label": "Parent Name",
+   "label": "Jina kamili la mzazi au mlezi",
    "max_length": 0,
    "max_value": 0,
    "precision": "",
@@ -114,22 +119,23 @@
   {
    "allow_read_on_all_link_options": 0,
    "fieldname": "phone_number",
-   "fieldtype": "Phone",
+   "fieldtype": "Data",
    "hidden": 0,
-   "label": "Phone Number",
+   "label": "Namba ya simu ya mkononi",
    "max_length": 0,
    "max_value": 0,
    "precision": "",
    "read_only": 0,
    "reqd": 1,
-   "show_in_filter": 0
+   "show_in_filter": 0,
+   "description": "Mfano 0754 123 456. Shule itawasiliana nawe kupitia namba hii."
   },
   {
    "allow_read_on_all_link_options": 0,
    "fieldname": "email",
    "fieldtype": "Data",
    "hidden": 0,
-   "label": "Email",
+   "label": "Barua pepe (si lazima)",
    "max_length": 0,
    "max_value": 0,
    "precision": "",
@@ -151,5 +157,9 @@
    "reqd": 0,
    "show_in_filter": 0
   }
- ]
+ ],
+ "meta_title": "Fomu ya Maombi ya Kujiunga",
+ "meta_description": "Omba nafasi ya mwanafunzi kujiunga na shule kwa mtandao.",
+ "success_title": "Maombi yamepokelewa",
+ "success_message": "Asante! Maombi yako yamepokelewa na uongozi wa shule utayashughulikia. Tutawasiliana nawe kupitia namba ya simu uliyoandika. Kumbuka kuleta shuleni cheti cha kuzaliwa cha mwanafunzi na cheti cha shule ya awali (kama kipo)."
 }

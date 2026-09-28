@@ -62,8 +62,11 @@ for decision making, and gives parents a Swahili portal with their children's re
 - Daily jobs: risk score per student (attendance, discipline, low average, failed subjects, decline; weights and
   levels in Smart School Settings), performance insights per class and subject, and academic records for ended years.
 - Student Promotion Tool: promote a class to the next level, keep repeaters, graduate Form 4.
-- Public admission form at `/apply-online`; the Headmaster approves (certificate attached or verified), which
-  creates the student and links or creates the guardian.
+- Public admission form at `/apply-online`, all in Swahili like the parent portal: labels, help, the calendar,
+  error messages (checked in the browser and again on the server) and the thank-you page. Gender shows as
+  Mvulana / Msichana and the class as "Kidato cha Kwanza"..., stored as before (Male / Female, the Class name);
+  the phone number is checked as a Tanzanian mobile number and stored as +255-7XXXXXXXX. The Headmaster approves
+  (certificate attached or verified), which creates the student and links or creates the guardian.
 
 ## Roles
 
@@ -136,6 +139,7 @@ A single suite: `bench --site test.localhost run-tests --module smart_school.tes
 | `test_early_warning` | Early Warning groups, class teacher scope, Emerging Risk card, rule-based fallback, nothing for parents |
 | `test_report_card_verification` | Random tokens, same token for an unchanged card, valid/changed/invalid pages, nothing extra shown, revoke, drafts, rate limit, QR in the PDF |
 | `test_interventions` | Snapshot, who sees and edits, reminders and card, Hatua column, matching, per-protocol and intention-to-treat, minimum sample, report warning |
+| `test_admission_form` | The public form in Swahili, values stored as before, Swahili messages for each mistake, desk entry unchanged |
 | `test_sms` | SMS parts (GSM-7 / UCS-2), placeholders, one SMS with long names, modes, consent (admission, portal, paper), numbers, quiet hours, limits, retries, expiry, once per exam, fee reminders and students who left, no sensitive SMS, who sees the outbox and report |
 
 ## SMS to parents
