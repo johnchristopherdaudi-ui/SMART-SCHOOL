@@ -73,5 +73,8 @@ class FeePayment(Document):
 			self.notify_guardian()
 
 	def notify_guardian(self):
+		from smart_school.sms import queue_payment_receipt
+
 		message = f"Malipo ya {flt(self.amount_paid):,.0f} TZS yamepokelewa. Salio la muhula huu: {flt(self.balance):,.0f} TZS."
 		send_notification(self.student, message, "Fee Payment")
+		queue_payment_receipt(self)

@@ -64,6 +64,16 @@ doctype_list_js = {
 # Public report card verification page: /verify/<token> (the QR code on each issued report card)
 website_route_rules = [{"from_route": "/verify/<token>", "to_route": "verify"}]
 
+# Short links for SMS (a long link would take a second SMS)
+website_redirects = [
+	{"source": "/matokeo", "target": "/parent-portal/results"},
+	{"source": "/ada", "target": "/parent-portal/fees"},
+	{"source": "/matangazo", "target": "/parent-portal/announcements"},
+]
+
+# SMS providers ({name: class}); another app can add its own (see smart_school.sms_providers)
+smart_school_sms_providers = {"Frappe SMS Settings": "smart_school.sms_providers.FrappeSMSSettingsProvider"}
+
 role_home_page = {
 	"Parent": "parent-portal",
 }
@@ -135,10 +145,12 @@ after_install = "smart_school.install.after_install"
 permission_query_conditions = {
 	"Exam Result": "smart_school.permissions.get_teacher_exam_result_permission_query",
 	"Student Intervention": "smart_school.interventions.get_permission_query",
+	"SMS Outbox": "smart_school.sms.get_permission_query",
 }
 
 has_permission = {
 	"Student Intervention": "smart_school.interventions.has_permission",
+	"SMS Outbox": "smart_school.sms.has_permission",
 }
 # DocType Class
 # ---------------
@@ -171,7 +183,11 @@ scheduler_events = {
 		"smart_school.marks_alerts.run_nightly_checks",
 		"smart_school.risk_model.refresh_predictions",
 		"smart_school.interventions.send_follow_up_reminders",
+		"smart_school.sms.send_fee_reminders",
 	],
+	"cron": {
+		"*/5 * * * *": ["smart_school.sms.process_queue"],
+	},
 	"weekly": [
 		"smart_school.risk_model.train_model",
 	],

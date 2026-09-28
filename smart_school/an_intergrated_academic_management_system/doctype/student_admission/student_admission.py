@@ -2,6 +2,7 @@ import re
 
 import frappe
 from frappe.model.document import Document
+from frappe.utils import getdate
 
 APPROVER_ROLES = ("Headmaster", "System Manager")
 
@@ -54,6 +55,9 @@ class StudentAdmission(Document):
 			guardian.email = self.email
 
 		guardian.append("students", {"student": student, "relationship": "Guardian"})
+		if self.sms_opt_in:  # an unticked box is not a refusal: an existing guardian's choice stays
+			guardian.sms_opt_in = 1
+			guardian.flags.sms_consent = frappe._dict(source="Admission", date=getdate(self.creation))
 		guardian.save(ignore_permissions=True)
 		return guardian.name
 

@@ -42,6 +42,15 @@ for decision making, and gives parents a Swahili portal with their children's re
   alerts (no risk scores are shown to parents).
 - Results with report card PDF download, fees with payment, discipline, announcements and a notification bell.
 - Parents are Website Users; they can only reach their own children's data.
+- An **SMS switch** on the home page: the parent turns SMS on or off for themselves.
+
+**SMS to parents** (see *SMS to parents* below)
+- Results (the exam average and, once the term is complete, the division, with a short portal link), payment
+  receipts, fee reminders (before a term and when fees are overdue) and announcements, in editable Swahili templates.
+  Never early warnings, interventions, discipline or marks alerts.
+- Only to guardians who agreed (admission form, parent portal, or a paper form recorded by the Headmaster).
+- Off / Test / Live; daily and monthly limits, a price per SMS, quiet hours (21:00–07:00), retries, an SMS Outbox
+  and an SMS Summary report.
 
 **Staff**
 - Workspaces: **Headmaster**, **Academics** (teachers), **Finance** (accountant) and **School Settings**
@@ -87,7 +96,8 @@ defaults, the external exam types (District Exam, Regional Exam, Mock) and the u
    their subject assignments, **Students** and **Guardians** (a portal user is created from the email).
 4. Check the provisional **Grading System** / **Division Grading** values with the academic master.
    Set `host_name` (below) before printing report cards: their QR codes use it.
-5. Outgoing email: an Email Account set as default outgoing; SMS: Frappe's SMS Settings.
+5. Outgoing email: an Email Account set as default outgoing. SMS start **Off**: set up Frappe's SMS Settings (the
+   provider's URL and parameters), try **Test** first (see *SMS to parents*), then **Live**.
    Set `host_name` in the site config so links in emails and the report card QR codes point to the real address,
    e.g. `bench --site <site> set-config host_name "https://school.example"`.
 
@@ -125,6 +135,57 @@ A single suite: `bench --site test.localhost run-tests --module smart_school.tes
 | `test_risk_model` | Features, labels, time split, bootstrap, decision, model file checks, ablation, predictions, data guard |
 | `test_early_warning` | Early Warning groups, class teacher scope, Emerging Risk card, rule-based fallback, nothing for parents |
 | `test_report_card_verification` | Random tokens, same token for an unchanged card, valid/changed/invalid pages, nothing extra shown, revoke, drafts, rate limit, QR in the PDF |
+| `test_interventions` | Snapshot, who sees and edits, reminders and card, Hatua column, matching, per-protocol and intention-to-treat, minimum sample, report warning |
+| `test_sms` | SMS parts (GSM-7 / UCS-2), placeholders, one SMS with long names, modes, consent (admission, portal, paper), numbers, quiet hours, limits, retries, expiry, once per exam, fee reminders and students who left, no sensitive SMS, who sees the outbox and report |
+
+## SMS to parents
+
+Code: `smart_school/sms.py` (queue, consent, templates, limits), `smart_school/sms_providers.py` (the gateway);
+doctypes **SMS Outbox** and **SMS Template**; report **SMS Summary** (Headmaster and Finance workspaces).
+
+- **Modes** (Smart School Settings > SMS to Parents): *Off* writes nothing. *Test* does everything (consent,
+  numbers, templates, limits, quiet hours) and records each message in the SMS Outbox as *Test* instead of sending
+  it. *Live* sends through the provider; it cannot be turned on before the provider is set up.
+- **Every message** is one SMS Outbox row for one guardian: type, number, text, characters, SMS parts, estimated
+  cost, status (*Queued*, *Sent*, *Failed*, *Test*, *Skipped*), the reason or provider error, and the record it
+  is about. Each exam, payment, reminder (per term) and announcement goes to a guardian once, even if results are
+  published again.
+- **Consent**: *Agrees to Receive SMS* on the Guardian, with how (Admission, Portal, Staff), when and by whom.
+  Guardians who were there before SMS existed start without consent. Parents tick a box on the admission form or
+  use the switch on the portal. The Headmaster records paper forms for many guardians at once (Guardian list >
+  Actions > *Record SMS Consent (Paper)*, with the date on the form). Without consent a message is *Skipped*.
+  Consent is checked again just before sending.
+- **Numbers** are sent as 255XXXXXXXXX (a Tanzanian mobile number, 06/07); anything else is *Failed* with the
+  reason, and *Try Again* uses the guardian's corrected number.
+- **Templates** (SMS Template, one per type) use `{placeholders}`; unknown ones are refused. The form shows the
+  characters and SMS parts as typed and for a message with long real names. One SMS is 160 characters (GSM-7; 153
+  per part when longer); `^{}[]~|€\` count 2, and any other character (an emoji, a curly quote) makes it UCS-2
+  (70, 67 per part). When a message would need 2 SMS the student's name is shortened (first and last name, then an
+  initial) and an announcement's title is cut. Portal links are short: `/matokeo`, `/ada`, `/matangazo`.
+
+| Type | Sent when | Default text |
+|---|---|---|
+| Results Published | the Headmaster publishes an exam and ticks *Also send SMS* | `{shule}: {mwanafunzi} - {mtihani}: wastani {wastani}%{division}. Zaidi: {kiungo}` |
+| Payment Received | a payment is submitted | `{shule}: Tumepokea TZS {kiasi} ada ya {mwanafunzi} ({muhula}). Risiti {risiti}. Salio TZS {salio}.` |
+| Fee Reminder | once, in the 7 days before a term starts, if anything is owed (switch, default off) | `{shule}: {muhula} inaanza {tarehe}. Ada ya {mwanafunzi}: TZS {kiasi}{deni}. Lipa: {kiungo}` |
+| Fee Overdue | once, from 30 days after a term started (for 14 days, so old terms are not dug up), if still owed (switch, default off) | `{shule}: {mwanafunzi} ana deni la ada TZS {salio} ({muhula}, siku {siku}). Tafadhali lipa: {kiungo}` |
+| Announcement | the Headmaster presses *Also Send by SMS* | `{shule}: Tangazo - {kichwa}. Soma zaidi: {kiungo}` |
+
+  `{wastani}` is the student's average in that exam; `{division}` is ", Division II" once every exam of the term is
+  published, else nothing. Before-term reminders go to active students still at school; nobody gets a reminder
+  for a term that started after they left.
+- **Cost and safety**: price per SMS (TZS 25), daily limit (1,500 SMS) and monthly limit (5,000), counted in SMS
+  parts sent or recorded in Test mode. Before a bulk send (publishing results, an announcement) a dialog shows the
+  messages, SMS, cost, how many are skipped or have a wrong number, and what is left of the limits; a batch that
+  does not fit in the month cannot be confirmed, and what does not fit in the day waits for the next. Turning a
+  reminder switch on first shows who would get one today and the cost. Messages written between 21:00 and 07:00
+  wait for 07:00. A background job sends every 5 minutes; provider errors are tried again after 5, 30 and
+  120 minutes (3 attempts), and what is still unsent after 72 hours is dropped (*Skipped*, Expired).
+- **Who sees what**: the Headmaster and System Manager see every message and the report; the Accountant the fee
+  messages only; teachers and parents none.
+- **Another provider**: write a class with `send(phone, text)` returning `SendResult` (see `sms_providers.py`) and
+  register it in an app's hooks: `smart_school_sms_providers = {"Beem": "my_app.sms.BeemProvider"}`; then choose
+  it in *SMS Provider*. The queue and its rules do not change.
 
 ## Analytics methodology
 
@@ -378,6 +439,21 @@ What this shows:
   gives nearly the same answer as here (+1.0 and +0.9). It is reported as it came out, without changing the seed
   or the size of the data: choosing a seed because it gives the planted answer would be choosing the result. Read
   the demo's interval as one draw; the 30 schools are the check of the method.
+
+**SMS** (Test mode: nothing is sent; `demo_data.add_sms_demo`, run on this demo after it was made, with its own
+random numbers so nothing above changed): 344 of 410 guardians agreed on the admission form (85%), and 3 of their
+numbers were typed with a digit missing. The results of the 4 exams published in Term 2 2026 (Form 1, 3 and 4
+Terminal, Form 4 Mock) and the receipts of the last 14 days' 49 payments gave 314 messages:
+
+| | Test (recorded, not sent) | Skipped (no consent) | Failed (wrong number) |
+|---|---|---|---|
+| Results Published | 232 | 32 | 1 |
+| Payment Received | 41 | 8 | 0 |
+
+Every message fits in one SMS (111 characters on average, 121 at most), so 273 SMS would have cost TZS 6,825.
+A results message reads: *Mwanga SS: Pendo John Kisanga - Terminal: wastani 53.3%, Division II. Zaidi:
+http://demo.localhost:8000/matokeo* (the division shows because every exam of that term is published). The link
+uses the site's address; set `host_name` to the address parents use.
 
 ### Limitations
 

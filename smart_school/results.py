@@ -1,7 +1,7 @@
 from decimal import ROUND_HALF_UP, Decimal
 
 import frappe
-from frappe.utils import flt, get_fullname, now_datetime
+from frappe.utils import cint, flt, get_fullname, now_datetime
 
 BEST_SUBJECTS = 7
 INCOMPLETE = "Incomplete"
@@ -146,7 +146,8 @@ def recompute_term_results(exam):
 
 
 @frappe.whitelist()
-def publish_exam_results(exam):
+def publish_exam_results(exam, send_sms=1):
+	"""send_sms: the Headmaster's choice in the publish dialog, after seeing how many SMS it takes."""
 	frappe.only_for(PUBLISHER_ROLES)
 	doc = frappe.get_doc("Exam", exam)
 	if doc.results_published:
@@ -174,7 +175,12 @@ def publish_exam_results(exam):
 			f"Published with {open_alerts} open marks alert{'s' if open_alerts != 1 else ''} "
 			f"by {get_fullname(frappe.session.user)}",
 		)
-	frappe.enqueue("smart_school.results.notify_published_exam", exam=exam, enqueue_after_commit=True)
+	frappe.enqueue(
+		"smart_school.results.notify_published_exam",
+		exam=exam,
+		send_sms=cint(send_sms),
+		enqueue_after_commit=True,
+	)
 
 
 @frappe.whitelist()
@@ -191,9 +197,14 @@ def unpublish_exam_results(exam):
 	note_unpublished(doc, published_on)
 
 
-def notify_published_exam(exam):
-	"""One message per student for a published exam, instead of one per subject."""
+def notify_published_exam(exam, send_sms=1):
+	"""One email per student for a published exam, instead of one per subject; and one SMS per student to each
+	guardian who agreed (smart_school.sms: once per exam, even when it is published again)."""
 	from smart_school.notifications import send_notification
+	from smart_school.sms import queue_exam_results
+
+	if cint(send_sms):
+		queue_exam_results(exam)
 
 	exam_doc = frappe.get_doc("Exam", exam)
 	results = frappe.get_all(

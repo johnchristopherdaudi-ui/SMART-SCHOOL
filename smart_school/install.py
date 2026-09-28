@@ -15,12 +15,14 @@ def after_install():
 		seed_grading_tables,
 		set_grade_remarks,
 		set_risk_score_defaults,
+		set_sms_defaults,
 	)
 
 	seed_grading_tables.execute()
 	set_grade_remarks.execute()
 	set_risk_score_defaults.execute()
 	create_external_exam_types.execute()  # District Exam, Regional Exam, Mock
+	set_sms_defaults.execute()  # SMS Off, price and limits, the Swahili templates
 
 	frappe.db.add_unique("Student Term Result", ["student", "term"], constraint_name="unique_student_term")
 	frappe.db.commit()

@@ -11,6 +11,12 @@
   "phone",
   "email",
   "students",
+  "sms_section",
+  "sms_opt_in",
+  "sms_opt_in_source",
+  "sms_column_break",
+  "sms_opt_in_date",
+  "sms_opt_in_by",
   "last_announcement_seen"
  ],
  "fields": [
@@ -50,12 +56,49 @@
    "fieldtype": "Datetime",
    "hidden": 1,
    "label": "Last Announcement Seen"
+  },
+  {
+   "fieldname": "sms_section",
+   "fieldtype": "Section Break",
+   "label": "SMS"
+  },
+  {
+   "default": "0",
+   "fieldname": "sms_opt_in",
+   "fieldtype": "Check",
+   "label": "Agrees to Receive SMS",
+   "in_standard_filter": 1,
+   "description": "Results, receipts, fee reminders and announcements. Only with the parent's consent (admission form, parent portal, or on paper)"
+  },
+  {
+   "fieldname": "sms_opt_in_source",
+   "fieldtype": "Select",
+   "label": "Consent Given Through",
+   "options": "\nAdmission\nPortal\nStaff",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sms_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sms_opt_in_date",
+   "fieldtype": "Date",
+   "label": "Consent Changed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sms_opt_in_by",
+   "fieldtype": "Link",
+   "label": "Consent Recorded By",
+   "options": "User",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-23 14:00:00.000000",
+ "modified": "2026-09-30 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
  "name": "Guardian",
@@ -92,5 +135,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "title_field": "full_name"
+ "title_field": "full_name",
+ "track_changes": 1
 }

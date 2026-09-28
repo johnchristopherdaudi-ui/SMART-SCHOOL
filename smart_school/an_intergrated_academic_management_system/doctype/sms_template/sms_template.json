@@ -1,0 +1,128 @@
+{
+ "actions": [],
+ "autoname": "field:template_type",
+ "creation": "2026-09-30 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "template_type",
+  "enabled",
+  "message",
+  "preview_html",
+  "column_break_template",
+  "placeholders_html",
+  "example_section",
+  "example",
+  "example_characters",
+  "column_break_example",
+  "example_segments",
+  "example_encoding"
+ ],
+ "fields": [
+  {
+   "fieldname": "template_type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Results Published\nPayment Received\nFee Reminder\nFee Overdue\nAnnouncement",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "in_list_view": 1,
+   "description": "Off: no SMS of this type is written"
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Small Text",
+   "label": "Message (Swahili)",
+   "reqd": 1,
+   "description": "Placeholders in braces, e.g. {mwanafunzi}. One SMS is 160 characters."
+  },
+  {
+   "fieldname": "preview_html",
+   "fieldtype": "HTML",
+   "label": "Length"
+  },
+  {
+   "fieldname": "column_break_template",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "placeholders_html",
+   "fieldtype": "HTML",
+   "label": "Placeholders"
+  },
+  {
+   "fieldname": "example_section",
+   "fieldtype": "Section Break",
+   "label": "Example with long names"
+  },
+  {
+   "fieldname": "example",
+   "fieldtype": "Small Text",
+   "label": "Example",
+   "read_only": 1,
+   "description": "Saved with the template: the message made with long real values"
+  },
+  {
+   "fieldname": "example_characters",
+   "fieldtype": "Int",
+   "label": "Characters",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_example",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "example_segments",
+   "fieldtype": "Int",
+   "label": "SMS",
+   "read_only": 1
+  },
+  {
+   "fieldname": "example_encoding",
+   "fieldtype": "Data",
+   "label": "Encoding",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-09-30 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
+ "name": "SMS Template",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Headmaster",
+   "write": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1
+}

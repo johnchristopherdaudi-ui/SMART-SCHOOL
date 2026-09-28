@@ -11,7 +11,11 @@
   "date",
   "audience",
   "posted_by",
-  "classes"
+  "classes",
+  "sms_section",
+  "sms_sent_on",
+  "sms_column_break",
+  "sms_messages"
  ],
  "fields": [
   {
@@ -56,12 +60,36 @@
    "label": "Audience",
    "options": "Specific Classes\nAll School",
    "reqd": 1
+  },
+  {
+   "fieldname": "sms_section",
+   "fieldtype": "Section Break",
+   "label": "SMS",
+   "depends_on": "eval:doc.sms_sent_on"
+  },
+  {
+   "fieldname": "sms_sent_on",
+   "fieldtype": "Datetime",
+   "label": "SMS Sent On",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "sms_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sms_messages",
+   "fieldtype": "Int",
+   "label": "SMS Messages Written",
+   "read_only": 1,
+   "no_copy": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-24 13:00:00.000000",
+ "modified": "2026-09-30 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
  "name": "Announcement",

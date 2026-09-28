@@ -103,18 +103,31 @@ SURNAMES = (
 
 
 def assert_demo_site():
-	from smart_school.notifications import has_outgoing_email_account
+	assert_demo_name()
+	site = frappe.local.site
+	if frappe.db.count("Student") or frappe.db.count("Academic Year"):
+		frappe.throw(f"{site} already has students or academic years; demo data needs an empty site")
+	if pending_patches():
+		frappe.throw(f"{site} has patches that have not run; run bench --site {site} migrate first")
+	assert_nobody_messaged()
 
+
+def assert_demo_name():
 	site = frappe.local.site
 	if site in PROTECTED_SITES:
 		frappe.throw(f"Demo data must never be generated on {site}")
 	if not (site.startswith("demo.") or frappe.conf.get("allow_demo_data")):
 		frappe.throw(f"Demo data is only generated on a demo site (demo.*), not on {site}")
-	if frappe.db.count("Student") or frappe.db.count("Academic Year"):
-		frappe.throw(f"{site} already has students or academic years; demo data needs an empty site")
-	if pending_patches():
-		frappe.throw(f"{site} has patches that have not run; run bench --site {site} migrate first")
-	if has_outgoing_email_account() or frappe.db.get_single_value("SMS Settings", "sms_gateway_url"):
+
+
+def assert_nobody_messaged():
+	from smart_school.notifications import has_outgoing_email_account
+
+	if (
+		has_outgoing_email_account()
+		or frappe.db.get_single_value("SMS Settings", "sms_gateway_url")
+		or frappe.db.get_single_value("Smart School Settings", "sms_mode") == "Live"
+	):
 		frappe.throw("Turn off outgoing email and SMS before generating demo data, so no one is messaged")
 
 
@@ -670,12 +683,113 @@ def generate(seed=42, as_of=None, students_per_form=STUDENTS_PER_FORM):
 	plan = build_plan(seed, as_of, cint(students_per_form))
 	manifest = write_plan(plan)
 	frappe.db.commit()
-
-	path = frappe.get_site_path("private", "demo_data_manifest.json")
-	with open(path, "w") as f:
-		json.dump(manifest, f, indent=1, default=str)
-	log(f"Manifest saved to {path}")
+	manifest["sms"] = write_sms_demo(plan.seed, plan.as_of)
+	frappe.db.commit()
+	save_manifest(manifest)
 	return manifest
+
+
+def manifest_path():
+	return frappe.get_site_path("private", "demo_data_manifest.json")
+
+
+def save_manifest(manifest):
+	with open(manifest_path(), "w") as f:
+		json.dump(manifest, f, indent=1, default=str)
+	log(f"Manifest saved to {manifest_path()}")
+
+
+# ---------- SMS (Test mode) ----------
+
+SMS_CONSENT_SHARE = 0.85  # guardians who ticked the SMS box on the admission form
+SMS_BAD_NUMBERS = 3  # of those, numbers typed with a digit missing: their SMS fail, with the reason
+SMS_RECEIPT_DAYS = 14  # receipts of the payments of the last two weeks
+
+
+def add_sms_demo():
+	"""SMS on a demo made before SMS existed: bench --site demo.localhost execute smart_school.demo_data.add_sms_demo.
+	Test mode only (nothing is sent), and its own random numbers, so the rest of the demo does not change."""
+	assert_demo_name()
+	assert_nobody_messaged()
+	if frappe.db.count("SMS Outbox"):
+		frappe.throw("This demo already has SMS messages")
+	with open(manifest_path()) as f:
+		manifest = json.load(f)
+	manifest["sms"] = write_sms_demo(manifest["seed"], getdate(manifest["as_of"]))
+	frappe.db.commit()
+	save_manifest(manifest)
+	return manifest["sms"]
+
+
+def write_sms_demo(seed, as_of):
+	"""Test mode; consent for most guardians (a few numbers mistyped); the SMS of the results published in the
+	last finished term and of the last two weeks' receipts, written and recorded as Test. Does not commit."""
+	from smart_school import sms
+
+	rng = random.Random(f"{seed}-sms")
+	frappe.flags.mute_emails = True
+	settings = {**sms.DEFAULTS, "sms_mode": sms.TEST, "sms_school_name": "Mwanga SS"}
+	for fieldname, value in settings.items():
+		frappe.db.set_single_value("Smart School Settings", fieldname, value)
+	frappe.clear_document_cache("Smart School Settings", "Smart School Settings")
+
+	guardians = frappe.get_all("Guardian", fields=["name", "phone", "creation"], order_by="name asc")
+	agreed = [g for g in guardians if rng.random() < SMS_CONSENT_SHARE]
+	for g in agreed:
+		frappe.db.set_value(
+			"Guardian",
+			g.name,
+			{
+				"sms_opt_in": 1,
+				"sms_opt_in_source": "Admission",
+				"sms_opt_in_date": getdate(g.creation),
+				"sms_opt_in_by": "Administrator",
+			},
+			update_modified=False,
+		)
+	mistyped = []
+	for g in rng.sample([g for g in agreed if g.phone], min(SMS_BAD_NUMBERS, len(agreed))):
+		wrong = g.phone[:-1]  # a digit missing
+		frappe.db.set_value("Guardian", g.name, "phone", wrong, update_modified=False)
+		mistyped.append({"guardian": g.name, "phone": wrong})
+
+	terms = frappe.get_all(
+		"Term", filters={"end_date": ["<", as_of]}, fields=["name"], order_by="end_date desc", limit=1
+	)
+	exams = (
+		frappe.get_all("Exam", filters={"term": terms[0].name, "results_published": 1}, pluck="name", order_by="name")
+		if terms
+		else []
+	)
+	for exam in exams:
+		sms.queue_exam_results(exam)
+	payments = frappe.get_all(
+		"Fee Payment",
+		filters={"docstatus": 1, "payment_date": ["between", [as_of - timedelta(days=SMS_RECEIPT_DAYS), as_of]]},
+		pluck="name",
+		order_by="payment_date asc, name asc",
+	)
+	for payment in payments:
+		sms.queue_payment_receipt(payment)
+	sms.send_due()  # in the quiet hours they stay Queued until 07:00 (the scheduler sends them)
+	log(f"SMS (Test mode): {len(exams)} exams, {len(payments)} payments")
+
+	outbox = frappe.get_all("SMS Outbox", fields=["message_type", "status", "segments"])
+	counts = {}
+	for row in outbox:
+		key = f"{row.message_type} / {row.status}"
+		counts[key] = counts.get(key, 0) + 1
+	return {
+		"mode": sms.TEST,
+		"guardians": len(guardians),
+		"consent": len(agreed),
+		"mistyped_numbers": mistyped,
+		"results_exams": exams,
+		"receipt_payments": len(payments),
+		"messages": dict(sorted(counts.items())),
+		"sms_parts": sum(r.segments for r in outbox),
+		"multi_part_messages": sum(1 for r in outbox if r.segments > 1),
+	}
 
 
 def complete_setup_wizard():

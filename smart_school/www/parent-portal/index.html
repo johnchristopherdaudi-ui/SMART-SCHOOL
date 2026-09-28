@@ -102,12 +102,49 @@ font-weight: 800; font-size: 20px; flex-shrink: 0;
 <div class="sp-chart-card"><canvas id="trendChart" height="90"></canvas></div>
 {% endif %}
 {% endif %}
+
+<div class="sp-section-title">Ujumbe wa SMS</div>
+<div class="sp-card sp-sms-card">
+    <div class="sp-card-body">
+        {% if sms.phone_end %}
+        <p>Matokeo, risiti na vikumbusho vya ada, na matangazo kwa SMS kwenye namba inayoishia <b>{{ sms.phone_end | e }}</b>.</p>
+        <label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-weight:600;">
+            <input type="checkbox" id="sms-opt-in" {% if sms.opt_in %}checked{% endif %}>
+            <span id="sms-opt-in-label">{% if sms.opt_in %}SMS zimewashwa{% else %}SMS zimezimwa{% endif %}</span>
+        </label>
+        <p style="font-size:12px;color:#888;">Unaweza kuzima au kuwasha wakati wowote. Hakuna SMS kuhusu nidhamu au tathmini za ndani za shule.</p>
+        {% elif sms.has_phone %}
+        <p>Namba ya simu tuliyonayo si namba sahihi ya simu ya mkononi ya Tanzania. Wasiliana na shule ili uweze kupokea SMS.</p>
+        {% else %}
+        <p>Hatuna namba yako ya simu. Wasiliana na shule ili uweze kupokea SMS.</p>
+        {% endif %}
+    </div>
+</div>
 </div>
 {% endblock %}
 
 {% block portal_script %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script>
+(function () {
+    var box = document.getElementById('sms-opt-in');
+    if (!box) return;
+    box.addEventListener('change', function () {
+        var enabled = box.checked ? 1 : 0;
+        box.disabled = true;
+        frappe.call({
+            method: 'smart_school.sms.set_my_consent',
+            args: { enabled: enabled },
+            callback: function (r) {
+                box.disabled = false;
+                var on = r.message && r.message.sms_opt_in;
+                box.checked = !!on;
+                document.getElementById('sms-opt-in-label').textContent = on ? 'SMS zimewashwa' : 'SMS zimezimwa';
+            },
+            error: function () { box.disabled = false; box.checked = !enabled; }
+        });
+    });
+})();
 {% if dashboard and dashboard.trend_values %}
 new Chart(document.getElementById('trendChart'), {
     type: 'line',

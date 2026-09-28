@@ -44,7 +44,25 @@
   "alert_class_min_diff",
   "alert_student_z",
   "alert_student_min_jump",
-  "alert_zero_drop_from"
+  "alert_zero_drop_from",
+  "sms_section",
+  "sms_mode",
+  "sms_provider",
+  "sms_school_name",
+  "sms_price",
+  "sms_column_break",
+  "sms_daily_limit",
+  "sms_monthly_limit",
+  "sms_quiet_start",
+  "sms_quiet_end",
+  "sms_max_attempts",
+  "sms_expire_hours",
+  "sms_reminders_section",
+  "sms_fee_reminder_before_term",
+  "sms_fee_days_before_term",
+  "sms_reminders_column_break",
+  "sms_fee_reminder_overdue",
+  "sms_fee_overdue_days"
  ],
  "fields": [
   {
@@ -314,13 +332,129 @@
    "fieldtype": "Int",
    "label": "Minimum Students per Type",
    "non_negative": 1
+  },
+  {
+   "fieldname": "sms_section",
+   "fieldtype": "Section Break",
+   "label": "SMS to Parents"
+  },
+  {
+   "default": "Off",
+   "fieldname": "sms_mode",
+   "fieldtype": "Select",
+   "label": "SMS Mode",
+   "options": "Off\nTest\nLive",
+   "description": "Off: no SMS. Test: messages are written to the SMS Outbox but not sent. Live: sent through the SMS provider (needs Frappe SMS Settings)"
+  },
+  {
+   "default": "Frappe SMS Settings",
+   "fieldname": "sms_provider",
+   "fieldtype": "Data",
+   "label": "SMS Provider",
+   "description": "A provider registered by an app (hook smart_school_sms_providers)"
+  },
+  {
+   "fieldname": "sms_school_name",
+   "fieldtype": "Data",
+   "label": "School Name in SMS",
+   "length": 20,
+   "description": "Short name at the start of each SMS (at most 20 characters); the school name when empty"
+  },
+  {
+   "default": "25",
+   "fieldname": "sms_price",
+   "fieldtype": "Currency",
+   "label": "Price per SMS (TZS)",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "sms_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1500",
+   "fieldname": "sms_daily_limit",
+   "fieldtype": "Int",
+   "label": "Daily Limit (SMS)",
+   "non_negative": 1,
+   "description": "Counted in SMS parts, sent or recorded in Test mode; more waits for the next day"
+  },
+  {
+   "default": "5000",
+   "fieldname": "sms_monthly_limit",
+   "fieldtype": "Int",
+   "label": "Monthly Limit (SMS)",
+   "non_negative": 1
+  },
+  {
+   "default": "21:00:00",
+   "fieldname": "sms_quiet_start",
+   "fieldtype": "Time",
+   "label": "Quiet Hours From"
+  },
+  {
+   "default": "07:00:00",
+   "fieldname": "sms_quiet_end",
+   "fieldtype": "Time",
+   "label": "Quiet Hours Until",
+   "description": "Messages written in the quiet hours wait until this time"
+  },
+  {
+   "default": "3",
+   "fieldname": "sms_max_attempts",
+   "fieldtype": "Int",
+   "label": "Attempts per Message",
+   "non_negative": 1
+  },
+  {
+   "default": "72",
+   "fieldname": "sms_expire_hours",
+   "fieldtype": "Int",
+   "label": "Drop Unsent After (Hours)",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "sms_reminders_section",
+   "fieldtype": "Section Break",
+   "label": "SMS Fee Reminders"
+  },
+  {
+   "default": "0",
+   "fieldname": "sms_fee_reminder_before_term",
+   "fieldtype": "Check",
+   "label": "Remind Before a Term Starts"
+  },
+  {
+   "default": "7",
+   "fieldname": "sms_fee_days_before_term",
+   "fieldtype": "Int",
+   "label": "Days Before the Term",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "sms_reminders_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "sms_fee_reminder_overdue",
+   "fieldtype": "Check",
+   "label": "Remind When Fees Are Overdue"
+  },
+  {
+   "default": "30",
+   "fieldname": "sms_fee_overdue_days",
+   "fieldtype": "Int",
+   "label": "Days After the Term Starts",
+   "non_negative": 1,
+   "description": "Once per student and term, for 14 days after this day"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-29 10:00:00.000000",
+ "modified": "2026-09-30 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
  "name": "Smart School Settings",

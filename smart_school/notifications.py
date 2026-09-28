@@ -5,12 +5,13 @@ from smart_school.branding import get_school_branding
 
 
 def send_notification(student, message, notification_type="General"):
+	"""Email to the student's guardians. SMS go through smart_school.sms (consent, templates, limits, quiet
+	hours); parents are Website Users, so desk Notification Logs are useless to them: the portal bell is the
+	in-app channel."""
 	guardians = get_guardians_for_student(student)
 
 	for guardian in guardians:
 		send_email_to_guardian(guardian, message, notification_type)
-		send_sms_to_guardian(guardian, message)
-	# Parents are Website Users, so desk Notification Logs are useless to them: the portal bell is the in-app channel
 
 
 def get_guardians_for_student(student):
@@ -56,19 +57,3 @@ def get_email_body(message, school):
 	if contacts:
 		signature.append(contacts)
 	return f"<p>{escape_html(message)}</p><p>Wasalaam,<br>{'<br>'.join(signature)}</p>"
-
-
-def send_sms_to_guardian(guardian, message):
-	if not guardian.phone:
-		return
-
-	if not frappe.db.get_single_value("SMS Settings", "sms_gateway_url"):
-		frappe.logger().info(f"[SMS SIMULATION] To: {guardian.phone} - Message: {message}")
-		return
-
-	from frappe.core.doctype.sms_settings.sms_settings import send_sms
-
-	try:
-		send_sms([guardian.phone], message)
-	except Exception:
-		frappe.log_error(title=f"Smart School SMS to {guardian.phone} failed")

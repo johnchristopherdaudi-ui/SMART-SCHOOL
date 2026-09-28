@@ -7,10 +7,10 @@ frappe.ui.form.on("Exam", {
 			return;
 		}
 
-		const call = (method, message) => {
+		const call = (method, message, args = {}) => {
 			frappe.call({
 				method: `smart_school.results.${method}`,
-				args: { exam: frm.doc.name },
+				args: { exam: frm.doc.name, ...args },
 				freeze: true,
 				callback: () => {
 					frappe.show_alert({ message: __(message), indicator: "green" });
@@ -27,7 +27,8 @@ frappe.ui.form.on("Exam", {
 				);
 			});
 		} else {
-			const publish = () => call("publish_exam_results", "Results published; parents are being notified");
+			const publish = (send_sms) =>
+				call("publish_exam_results", "Results published; parents are being notified", { send_sms: send_sms ? 1 : 0 });
 			frm.add_custom_button(__("Publish Results"), () => check_marks_then_publish(frm, publish)).addClass(
 				"btn-primary"
 			);
@@ -39,7 +40,7 @@ frappe.ui.form.on("Exam", {
 
 // Marks alerts are a warning before publishing, never a block
 function check_marks_then_publish(frm, publish) {
-	const confirm_publish = () => frappe.confirm(__("Publish these results to parents and notify them?"), publish);
+	const confirm_publish = () => confirm_with_sms(frm, publish);
 
 	frappe.call({
 		method: "smart_school.marks_alerts.check_exam",
@@ -50,7 +51,7 @@ function check_marks_then_publish(frm, publish) {
 			const alerts = r.message || [];
 			alerts.length ? show_marks_alerts(frm, alerts, publish) : confirm_publish();
 		},
-		error: () => frappe.confirm(__("The marks check could not run. Publish these results anyway?"), publish),
+		error: () => frappe.confirm(__("The marks check could not run. Publish these results anyway?"), confirm_publish),
 	});
 }
 
@@ -84,7 +85,7 @@ function show_marks_alerts(frm, alerts, publish) {
 		primary_action_label: __("Publish anyway"),
 		primary_action() {
 			dialog.hide();
-			publish();
+			confirm_with_sms(frm, publish);
 		},
 		secondary_action_label: __("Cancel"),
 		secondary_action() {
@@ -92,4 +93,58 @@ function show_marks_alerts(frm, alerts, publish) {
 		},
 	});
 	dialog.show();
+}
+
+// The last step before publishing: how many SMS the results take and what they cost
+function confirm_with_sms(frm, publish) {
+	const email_only = () => frappe.confirm(__("Publish these results to parents and notify them by email?"), () => publish(false));
+	frappe.call({
+		method: "smart_school.sms.preview_exam_results",
+		args: { exam: frm.doc.name },
+		freeze: true,
+		callback: (r) => {
+			const p = r.message;
+			if (p.mode === "Off" || !p.template_enabled) {
+				email_only();
+				return;
+			}
+			const money = (v) => format_number(v, null, 0);
+			const lines = [];
+			if (p.mode === "Test") {
+				lines.push(`<b>${__("Test mode")}</b>: ${__("messages are written to the SMS Outbox, not sent.")}`);
+			}
+			lines.push(
+				__("{0} messages to guardians: {1} SMS, about TZS {2} (TZS {3} per SMS).", [p.messages, p.sms, money(p.cost), money(p.price)]),
+				__("Not agreed to SMS: {0} · wrong or missing number: {1} · already sent before: {2}.", [p.skipped, p.failed, p.already]),
+				__("Left today: {0} of {1} SMS; this month: {2} of {3}.", [p.remaining_today, p.daily_limit, p.remaining_month, p.monthly_limit])
+			);
+			if (p.sms > p.remaining_today && p.fits_month) {
+				lines.push(__("More than is left today: the rest is sent on the following day(s)."));
+			}
+			if (!p.fits_month) {
+				lines.push(`<span style="color: var(--red-600)">${__("Not enough SMS left this month: publish without SMS, or raise the monthly limit.")}</span>`);
+			}
+			lines.push(__("Messages written between 21:00 and 07:00 wait for the morning."));
+			const dialog = new frappe.ui.Dialog({
+				title: __("Publish results"),
+				fields: [
+					{ fieldtype: "HTML", options: lines.map((l) => `<p>${l}</p>`).join("") },
+					{
+						fieldname: "send_sms",
+						fieldtype: "Check",
+						label: __("Also send SMS to parents"),
+						default: p.fits_month && p.messages ? 1 : 0,
+						read_only: p.fits_month ? 0 : 1,
+					},
+				],
+				primary_action_label: __("Publish"),
+				primary_action(values) {
+					dialog.hide();
+					publish(values.send_sms && p.fits_month);
+				},
+			});
+			dialog.show();
+		},
+		error: email_only,
+	});
 }
