@@ -1,0 +1,190 @@
+{
+ "actions": [],
+ "autoname": "RCV-.YYYY.-.#####",
+ "creation": "2026-09-28 22:00:00.000000",
+ "description": "One record per issued report card: its QR code leads to /verify/<token>.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "token",
+  "student",
+  "student_name",
+  "class",
+  "term",
+  "column_break_main",
+  "issued_on",
+  "issued_via",
+  "issued_by",
+  "student_term_result",
+  "revoke_section",
+  "revoked",
+  "revoked_by",
+  "revoked_on",
+  "revoke_reason",
+  "certified_section",
+  "results_hash",
+  "snapshot"
+ ],
+ "fields": [
+  {
+   "fieldname": "token",
+   "fieldtype": "Data",
+   "label": "Token",
+   "no_copy": 1,
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Student",
+   "options": "Student",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "student.full_name",
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Student Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "class",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Class",
+   "options": "Class",
+   "read_only": 1
+  },
+  {
+   "fieldname": "term",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Term",
+   "options": "Term",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "issued_on",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Issued On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "issued_via",
+   "fieldtype": "Select",
+   "label": "Issued Via",
+   "options": "Portal PDF\nClass Print\nDesk Print",
+   "read_only": 1
+  },
+  {
+   "fieldname": "issued_by",
+   "fieldtype": "Link",
+   "label": "Issued By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "student_term_result",
+   "fieldtype": "Link",
+   "label": "Student Term Result",
+   "options": "Student Term Result",
+   "read_only": 1
+  },
+  {
+   "fieldname": "revoke_section",
+   "fieldtype": "Section Break",
+   "label": "Revoked"
+  },
+  {
+   "fieldname": "revoked",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Revoked",
+   "read_only": 1
+  },
+  {
+   "depends_on": "revoked",
+   "fieldname": "revoked_by",
+   "fieldtype": "Link",
+   "label": "Revoked By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "depends_on": "revoked",
+   "fieldname": "revoked_on",
+   "fieldtype": "Datetime",
+   "label": "Revoked On",
+   "read_only": 1
+  },
+  {
+   "depends_on": "revoked",
+   "fieldname": "revoke_reason",
+   "fieldtype": "Small Text",
+   "label": "Reason",
+   "read_only": 1
+  },
+  {
+   "fieldname": "certified_section",
+   "fieldtype": "Section Break",
+   "label": "What the report card certifies"
+  },
+  {
+   "fieldname": "results_hash",
+   "fieldtype": "Data",
+   "label": "Results Hash",
+   "read_only": 1
+  },
+  {
+   "fieldname": "snapshot",
+   "fieldtype": "Code",
+   "label": "Snapshot",
+   "options": "JSON",
+   "read_only": 1
+  }
+ ],
+ "links": [],
+ "modified": "2026-09-28 22:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
+ "name": "Report Card Verification",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager"
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Headmaster"
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "student_name",
+ "track_changes": 1
+}

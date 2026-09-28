@@ -1,0 +1,52 @@
+{% extends "smart_school/templates/parent_portal/base.html" %}
+
+{% block portal_style %}
+<style>
+.sp-container { max-width: 1100px; margin: 0 auto; padding: 35px 20px; }
+.sp-welcome { font-size: 24px; font-weight: 700; color: var(--sp-text); margin-bottom: 20px; }
+.sp-child-tabs { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
+.sp-child-tab { padding: 8px 18px; border-radius: 20px; background: #fff; color: var(--sp-primary); text-decoration: none; font-weight: 600; font-size: 14px; border: 1px solid #ddd; }
+.sp-child-tab.active { background: var(--sp-primary); color: #fff; border-color: var(--sp-primary); }
+.sp-record-card { background: #fff; border-radius: 12px; padding: 18px 22px; margin-bottom: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); border-left: 5px solid #e63946; }
+.sp-record-date { font-size: 12px; color: #999; margin-bottom: 6px; }
+.sp-record-type { color: var(--sp-primary); font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+.sp-severity { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; margin-left: 8px; }
+.sp-severity.minor { background: #fff3cd; color: #856404; }
+.sp-severity.moderate { background: #ffe5b4; color: #8a5300; }
+.sp-severity.serious { background: #f8d7da; color: #721c24; }
+.sp-action { color: #555; font-size: 14px; margin-top: 6px; }
+.sp-empty { color: #888; padding: 30px; text-align: center; background: #fff; border-radius: 12px; }
+</style>
+{% endblock %}
+
+{% block portal_content %}
+<div class="sp-container">
+    <div class="sp-welcome">Rekodi za Nidhamu</div>
+
+    <div class="sp-child-tabs">
+        {% for child in children %}
+        <a class="sp-child-tab {% if child.name == selected_student.name %}active{% endif %}"
+           href="/parent-portal/discipline?student={{ child.name | urlencode }}">
+            {{ child.full_name | e }}
+        </a>
+        {% endfor %}
+    </div>
+
+    {% if records %}
+        {% for r in records %}
+        <div class="sp-record-card">
+            <div class="sp-record-date">{{ r.date | e }}</div>
+            <div class="sp-record-type">
+                {{ r.incident_label | e }}
+                <span class="sp-severity {{ r.severity_class | e }}">{{ r.severity_label | e }}</span>
+            </div>
+            {% if r.action_taken %}
+            <div class="sp-action">Hatua iliyochukuliwa: {{ r.action_taken | e }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="sp-empty">Hakuna rekodi za nidhamu kwa {{ selected_student.full_name | e }}. 🎉</div>
+    {% endif %}
+</div>
+{% endblock %}

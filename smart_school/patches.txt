@@ -1,0 +1,32 @@
+[pre_model_sync]
+# Patches added in this section will be executed before doctypes are migrated
+# Read docs to understand patches: https://frappeframework.com/docs/v14/user/en/database-migrations
+
+[post_model_sync]
+# Patches added in this section will be executed after doctypes are migrated
+smart_school.patches.remove_parent_and_guest_custom_docperms
+smart_school.patches.rename_students_to_naming_series
+smart_school.patches.create_users_for_existing_teachers
+smart_school.patches.make_parents_website_users
+smart_school.patches.set_class_on_fee_payments
+smart_school.patches.update_payment_gateway_logs
+smart_school.patches.seed_grading_tables
+smart_school.patches.rename_announcement_title
+smart_school.patches.set_exam_defaults_and_publish_existing
+smart_school.patches.recompute_exam_and_term_results
+smart_school.patches.migrate_discipline_records
+smart_school.patches.submit_existing_fee_payments
+smart_school.patches.set_risk_score_defaults
+smart_school.patches.reset_student_term_result_custom_perms
+smart_school.patches.set_grade_remarks
+smart_school.patches.set_staff_default_workspaces
+smart_school.patches.sync_school_branding
+smart_school.patches.set_marks_alert_defaults
+smart_school.patches.set_first_published_on
+smart_school.patches.update_marks_alert_thresholds
+smart_school.patches.set_student_exit_dates
+# Runs set_marks_alert_defaults again so the new Dropped To Zero threshold gets its default
+smart_school.patches.set_marks_alert_defaults #zero_drop
+smart_school.patches.set_model_level_thresholds
+smart_school.patches.create_external_exam_types
+smart_school.patches.set_intervention_defaults

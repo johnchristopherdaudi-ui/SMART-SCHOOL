@@ -1,0 +1,136 @@
+{% extends "smart_school/templates/parent_portal/base.html" %}
+
+{% block portal_style %}
+<style>
+.sp-container { max-width: 1100px; margin: 0 auto; padding: 35px 20px; }
+.sp-welcome { font-size: 24px; font-weight: 700; color: var(--sp-text); margin-bottom: 20px; }
+.sp-child-tabs { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
+.sp-child-tab { padding: 8px 18px; border-radius: 20px; background: #fff; color: var(--sp-primary); text-decoration: none; font-weight: 600; font-size: 14px; border: 1px solid #ddd; }
+.sp-child-tab.active { background: var(--sp-primary); color: #fff; border-color: var(--sp-primary); }
+.sp-chart-card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+.sp-insight-card { border-radius: 12px; padding: 18px 22px; margin-bottom: 20px; font-size: 14px; display: flex; align-items: center; gap: 12px; }
+.sp-insight-card.up { background: #d4edda; color: #155724; }
+.sp-insight-card.down { background: #f8d7da; color: #721c24; }
+.sp-insight-icon { font-size: 22px; }
+.sp-term-card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+.sp-term-card h4 { color: var(--sp-primary); margin-bottom: 10px; }
+.sp-term-stats { display: flex; gap: 25px; margin-bottom: 12px; flex-wrap: wrap; }
+.sp-stat { font-size: 14px; color: #555; }
+.sp-stat b { color: var(--sp-text); font-size: 16px; display: block; }
+table.sp-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.sp-table th { text-align: left; padding: 8px; border-bottom: 2px solid #eee; color: #777; font-size: 12px; text-transform: uppercase; }
+table.sp-table td { padding: 8px; border-bottom: 1px solid #f0f0f0; }
+table.sp-table th.num, table.sp-table td.num { text-align: center; }
+.sp-table-wrap { overflow-x: auto; }
+.sp-weights-note { font-size: 13px; color: #666; margin-top: 8px; }
+.sp-empty { color: #888; padding: 30px; text-align: center; background: #fff; border-radius: 12px; }
+.sp-download-btn { float: right; font-size: 13px; font-weight: 600; background: var(--sp-accent); color: var(--sp-primary); padding: 5px 12px; border-radius: 8px; text-decoration: none; }
+.sp-download-btn:hover { opacity: .9; text-decoration: none; }
+</style>
+{% endblock %}
+
+{% block portal_content %}
+<div class="sp-container">
+    <div class="sp-welcome">Matokeo ya Mtoto</div>
+
+    <div class="sp-child-tabs">
+        {% for child in children %}
+        <a class="sp-child-tab {% if child.name == selected_student.name %}active{% endif %}"
+           href="/parent-portal/results?student={{ child.name | urlencode }}">
+            {{ child.full_name | e }}
+        </a>
+        {% endfor %}
+    </div>
+
+    {% if results %}
+    {% if insight %}
+    <div class="sp-insight-card {% if insight.change_percentage > 0 %}up{% else %}down{% endif %}">
+        <span class="sp-insight-icon">{% if insight.change_percentage > 0 %}📈{% else %}📉{% endif %}</span>
+        <span>{{ insight.message | e }}</span>
+    </div>
+    {% endif %}
+
+    <div class="sp-chart-card">
+        <canvas id="performanceChart" height="90"></canvas>
+    </div>
+    {% endif %}
+
+    {% if results %}
+        {% for r in results %}
+        <div class="sp-term-card">
+            <h4>{{ r.term_name | e }}
+                {% if r.report_card_url %}<a class="sp-download-btn" href="{{ r.report_card_url | e }}">&#8681; Pakua Report Card (PDF)</a>{% endif %}
+            </h4>
+            {% if r.summary %}
+            <div class="sp-term-stats">
+                <div class="sp-stat"><b>{{ r.summary.average | e }}</b>Wastani</div>
+                <div class="sp-stat"><b>{{ (r.summary.division_display or r.summary.division) | e }}</b>Division</div>
+                <div class="sp-stat"><b>{{ r.summary.subjects_count | e }}</b>Masomo</div>
+            </div>
+            {% else %}
+            <div class="sp-empty">Muhtasari wa term utaonekana mitihani yote ya term hii ikishachapishwa.</div>
+            {% endif %}
+            {% if r.rows %}
+            <div class="sp-table-wrap">
+            <table class="sp-table">
+                <tr>
+                    <th>Somo</th>
+                    {% for x in r.exams %}
+                    <th class="num">{{ x.exam_name | e }}<br><small>/{{ "{:g}".format(x.max_marks) }}</small></th>
+                    {% endfor %}
+                    {% if r.summary %}<th class="num">Alama ya Term</th><th class="num">Grade</th><th class="num">Points</th>{% endif %}
+                </tr>
+                {% for row in r.rows %}
+                <tr>
+                    <td>{{ row.subject | e }}</td>
+                    {% for m in row.marks %}
+                    <td class="num">{% if m is not none %}{{ "{:g}".format(m) }}{% else %}&ndash;{% endif %}</td>
+                    {% endfor %}
+                    {% if r.summary %}
+                    <td class="num">{% if row.score is not none %}{{ row.score | e }}{% else %}&ndash;{% endif %}</td>
+                    <td class="num">{{ (row.grade or "") | e }}</td>
+                    <td class="num">{{ (row.points if row.points is not none else "") | e }}</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </table>
+            </div>
+            {% if r.weights_note %}<div class="sp-weights-note">{{ r.weights_note | e }}</div>{% endif %}
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="sp-empty">Hakuna matokeo yaliyopatikana kwa {{ selected_student.full_name | e }} bado.</div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block portal_script %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+
+var chartCanvas = document.getElementById('performanceChart');
+if (chartCanvas) {
+    new Chart(chartCanvas, {
+        type: 'line',
+        data: {
+            labels: {{ chart_labels | tojson }},
+            datasets: [{
+                label: 'Average',
+                data: {{ chart_values | tojson }},
+                borderColor: '#0d3b66',
+                backgroundColor: 'rgba(13, 59, 102, 0.1)',
+                fill: true,
+                tension: 0.3,
+                pointBackgroundColor: '#ffb703',
+                pointRadius: 5
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+</script>
+{% endblock %}

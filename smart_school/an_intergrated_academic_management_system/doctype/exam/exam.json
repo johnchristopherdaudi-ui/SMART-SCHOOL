@@ -1,0 +1,160 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{exam_name} - {class} - {term} - {academic_year}",
+ "creation": "2026-09-09 11:53:33.271226",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "exam_name",
+  "term",
+  "academic_year",
+  "class",
+  "max_marks",
+  "weight",
+  "is_external",
+  "external_exam_type",
+  "results_published",
+  "published_on",
+  "first_published_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "exam_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Exam Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "term",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Term",
+   "options": "Term",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "term.academic_year",
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "class",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Class",
+   "options": "Class",
+   "reqd": 1
+  },
+  {
+   "default": "100",
+   "fieldname": "max_marks",
+   "fieldtype": "Float",
+   "label": "Max Marks",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "description": "Share of this exam in the term subject score. Leave empty to use a plain average.",
+   "fieldname": "weight",
+   "fieldtype": "Percent",
+   "label": "Weight"
+  },
+  {
+   "fieldname": "results_published",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Results Published",
+   "read_only": 1
+  },
+  {
+   "depends_on": "results_published",
+   "fieldname": "published_on",
+   "fieldtype": "Datetime",
+   "label": "Published On",
+   "read_only": 1
+  },
+  {
+   "depends_on": "first_published_on",
+   "description": "Kept when results are unpublished: marks changed after this are flagged as changes after publishing",
+   "fieldname": "first_published_on",
+   "fieldtype": "Datetime",
+   "label": "First Published On",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "description": "Set by the district, region or nation (e.g. a District Exam or the Form 4 Mock), not by the school",
+   "fieldname": "is_external",
+   "fieldtype": "Check",
+   "label": "External Exam"
+  },
+  {
+   "depends_on": "is_external",
+   "description": "Chosen from the list (a Headmaster can add a new type), so marks alerts compare an external exam only with earlier ones of the same type",
+   "fieldname": "external_exam_type",
+   "fieldtype": "Link",
+   "label": "External Exam Type",
+   "mandatory_depends_on": "is_external",
+   "options": "External Exam Type"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-28 20:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
+ "name": "Exam",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Headmaster",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Teacher",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_title_field_in_link": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "exam_name"
+}

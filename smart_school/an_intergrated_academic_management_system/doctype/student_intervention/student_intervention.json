@@ -1,0 +1,273 @@
+{
+ "actions": [],
+ "autoname": "SI-.YYYY.-.#####",
+ "creation": "2026-09-29 10:00:00.000000",
+ "description": "What the school does for a student at risk, who is responsible and when to follow up.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "student",
+  "student_name",
+  "class",
+  "term",
+  "baseline_term",
+  "source",
+  "column_break_main",
+  "intervention_type",
+  "responsible",
+  "start_date",
+  "follow_up_date",
+  "status",
+  "parent_informed",
+  "details_section",
+  "description",
+  "outcome",
+  "snapshot_section",
+  "probability",
+  "probability_level",
+  "early_warning_group",
+  "column_break_snapshot",
+  "rule_score",
+  "rule_level",
+  "risk_model",
+  "reasons_section",
+  "reasons",
+  "reminder_sent_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "student.full_name",
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Student Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "student.current_class",
+   "fetch_if_empty": 1,
+   "fieldname": "class",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Class",
+   "options": "Class",
+   "read_only": 1
+  },
+  {
+   "description": "The term the intervention takes place in",
+   "fieldname": "term",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Term",
+   "options": "Term",
+   "reqd": 1
+  },
+  {
+   "description": "The term whose results gave the risk",
+   "fieldname": "baseline_term",
+   "fieldtype": "Link",
+   "label": "Risk From Term",
+   "options": "Term",
+   "read_only": 1
+  },
+  {
+   "default": "Manual",
+   "fieldname": "source",
+   "fieldtype": "Select",
+   "label": "Source",
+   "options": "Manual\nEarly Warning",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "intervention_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Type",
+   "options": "Counseling\nParent Meeting\nExtra Classes\nTeacher Follow-up\nReferral\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "responsible",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Responsible",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "follow_up_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Follow-up Date"
+  },
+  {
+   "default": "Planned",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Planned\nIn Progress\nCompleted\nCancelled",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "parent_informed",
+   "fieldtype": "Check",
+   "label": "Parent Informed"
+  },
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "outcome",
+   "fieldtype": "Small Text",
+   "label": "Outcome"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "snapshot_section",
+   "fieldtype": "Section Break",
+   "label": "Early Warning When Created"
+  },
+  {
+   "fieldname": "probability",
+   "fieldtype": "Percent",
+   "label": "Probability",
+   "read_only": 1
+  },
+  {
+   "fieldname": "probability_level",
+   "fieldtype": "Select",
+   "label": "Level",
+   "options": "\nLow\nMedium\nHigh",
+   "read_only": 1
+  },
+  {
+   "fieldname": "early_warning_group",
+   "fieldtype": "Data",
+   "label": "Group",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_snapshot",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "rule_score",
+   "fieldtype": "Float",
+   "label": "Rule-based Score",
+   "precision": "1",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rule_level",
+   "fieldtype": "Select",
+   "label": "Rule-based Level",
+   "options": "\nLow\nMedium\nHigh",
+   "read_only": 1
+  },
+  {
+   "fieldname": "risk_model",
+   "fieldtype": "Link",
+   "label": "Risk Model",
+   "options": "Risk Model",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reasons_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "reasons",
+   "fieldtype": "Small Text",
+   "label": "Reasons",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reminder_sent_on",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Reminder Sent On",
+   "no_copy": 1,
+   "read_only": 1
+  }
+ ],
+ "links": [],
+ "modified": "2026-09-29 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
+ "name": "Student Intervention",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Headmaster",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Teacher",
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "student_name",
+ "track_changes": 1
+}

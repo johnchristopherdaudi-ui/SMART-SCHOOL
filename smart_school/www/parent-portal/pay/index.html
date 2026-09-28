@@ -1,0 +1,101 @@
+{% extends "smart_school/templates/parent_portal/base.html" %}
+
+{% block portal_style %}
+<style>
+.sp-navbar { background: var(--sp-primary); padding: 14px 30px; }
+.sp-container { max-width: 480px; margin: 40px auto; padding: 0 20px; }
+.sp-pay-card { background: #fff; border-radius: 16px; padding: 30px; box-shadow: 0 2px 15px rgba(0,0,0,0.08); }
+.sp-pay-card h3 { color: var(--sp-primary); margin-bottom: 6px; }
+.sp-pay-summary { background: var(--sp-bg); border-radius: 10px; padding: 16px; margin-bottom: 22px; font-size: 14px; color: #555; }
+.sp-pay-summary b { color: var(--sp-primary); }
+.sp-field { margin-bottom: 16px; }
+.sp-field label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; font-weight: 600; }
+.sp-field select, .sp-field input {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;
+}
+.sp-submit-btn {
+    width: 100%; background: var(--sp-primary); color: #fff; border: none;
+    padding: 12px; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 10px;
+}
+.sp-submit-btn:hover { opacity: 0.9; }
+.sp-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+</style>
+{% endblock %}
+
+{% block portal_content %}
+<div class="sp-container">
+    <div class="sp-pay-card">
+        <h3>Lipa Ada</h3>
+        <div class="sp-pay-summary">
+            <b>{{ selected_student.full_name | e }}</b> &middot; {{ term_name | e }}<br>
+            Deni lililobaki: <b>{{ "{:,.0f}".format(amount|float) }} TZS</b>
+        </div>
+
+        <div class="sp-field">
+            <label>Kiasi cha Kulipa (TZS)</label>
+            <input type="number" id="amount" min="1" max="{{ amount|int }}" step="1" value="{{ amount|int }}">
+        </div>
+
+        <div class="sp-field">
+            <label>Chagua Njia ya Malipo</label>
+            <select id="provider">
+                {% for provider in providers %}
+                <option value="{{ provider | e }}">{{ provider | e }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="sp-field">
+            <label>Namba ya Simu</label>
+            <input type="text" id="phone" placeholder="07XXXXXXXX">
+        </div>
+
+        <button class="sp-submit-btn" id="submitBtn" onclick="submitPayment()">Endelea na Malipo</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block portal_script %}
+<script>
+function submitPayment() {
+    var phone = document.getElementById('phone').value;
+    var provider = document.getElementById('provider').value;
+    var amount = document.getElementById('amount').value;
+    var btn = document.getElementById('submitBtn');
+
+    if (!phone) {
+        frappe.msgprint("Tafadhali weka namba ya simu");
+        return;
+    }
+    if (!amount || Number(amount) <= 0) {
+        frappe.msgprint("Tafadhali weka kiasi cha kulipa");
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = "Inasubiri...";
+
+    frappe.call({
+        method: 'smart_school.portal_utils.create_payment_request',
+        args: {
+            student: {{ selected_student.name | tojson }},
+            term: {{ term | tojson }},
+            amount: amount,
+            provider: provider,
+            phone_number: phone
+        },
+        callback: function(r) {
+            if (r.message && r.message.reference) {
+                window.location.href = "/parent-portal/pay-confirm?ref=" + encodeURIComponent(r.message.reference);
+            }
+        },
+        always: function(r) {
+            if (!(r && r.message && r.message.reference)) {
+                btn.disabled = false;
+                btn.innerText = "Endelea na Malipo";
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

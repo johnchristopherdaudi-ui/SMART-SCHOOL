@@ -1,0 +1,343 @@
+{
+ "actions": [],
+ "creation": "2026-09-23 18:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "school_section",
+  "school_name",
+  "school_motto",
+  "school_logo",
+  "school_column_break",
+  "school_address",
+  "school_phone",
+  "school_email",
+  "payments_section",
+  "enable_demo_payments",
+  "risk_section",
+  "risk_weight_attendance",
+  "risk_weight_discipline",
+  "risk_weight_low_average",
+  "risk_column_break",
+  "risk_weight_failed_subjects",
+  "risk_weight_decline",
+  "risk_average_threshold",
+  "risk_levels_section",
+  "risk_medium_from",
+  "risk_high_from",
+  "model_levels_section",
+  "model_medium_threshold",
+  "model_levels_column_break",
+  "model_high_threshold",
+  "interventions_section",
+  "intervention_min_sample",
+  "marks_alerts_section",
+  "enable_marks_alerts",
+  "alert_min_class_size",
+  "alert_identical_share",
+  "alert_zero_share",
+  "alert_round_share",
+  "alert_min_std",
+  "marks_alerts_column_break",
+  "alert_history_min_exams",
+  "alert_class_z",
+  "alert_class_min_diff",
+  "alert_student_z",
+  "alert_student_min_jump",
+  "alert_zero_drop_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "payments_section",
+   "fieldtype": "Section Break",
+   "label": "Payments"
+  },
+  {
+   "default": "0",
+   "description": "Parents can simulate mobile money payments from the portal. Turn this off in production.",
+   "fieldname": "enable_demo_payments",
+   "fieldtype": "Check",
+   "label": "Enable Demo Payments"
+  },
+  {
+   "description": "Weights of the five parts must add up to 100. Each part is scored 0-1 for the current term.",
+   "fieldname": "risk_section",
+   "fieldtype": "Section Break",
+   "label": "Risk Score"
+  },
+  {
+   "default": "25",
+   "description": "Absent counts fully, Late half, Excused not at all; full at 30% of days",
+   "fieldname": "risk_weight_attendance",
+   "fieldtype": "Int",
+   "label": "Weight: Attendance",
+   "non_negative": 1
+  },
+  {
+   "default": "20",
+   "description": "Minor 1, Moderate 2, Serious 4 points; full at 8 points",
+   "fieldname": "risk_weight_discipline",
+   "fieldtype": "Int",
+   "label": "Weight: Discipline",
+   "non_negative": 1
+  },
+  {
+   "default": "25",
+   "fieldname": "risk_weight_low_average",
+   "fieldtype": "Int",
+   "label": "Weight: Low Average",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "risk_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "15",
+   "description": "Subjects graded F; full at 3",
+   "fieldname": "risk_weight_failed_subjects",
+   "fieldtype": "Int",
+   "label": "Weight: Failed Subjects",
+   "non_negative": 1
+  },
+  {
+   "default": "15",
+   "description": "Drop of the term average against the previous term; full at 10 points",
+   "fieldname": "risk_weight_decline",
+   "fieldtype": "Int",
+   "label": "Weight: Decline",
+   "non_negative": 1
+  },
+  {
+   "default": "45",
+   "description": "An average at or above this adds nothing",
+   "fieldname": "risk_average_threshold",
+   "fieldtype": "Int",
+   "label": "Low Average Below",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "risk_levels_section",
+   "fieldtype": "Section Break",
+   "label": "Risk Levels"
+  },
+  {
+   "default": "30",
+   "description": "Low is below this score",
+   "fieldname": "risk_medium_from",
+   "fieldtype": "Int",
+   "label": "Medium From",
+   "non_negative": 1
+  },
+  {
+   "default": "60",
+   "fieldname": "risk_high_from",
+   "fieldtype": "Int",
+   "label": "High From",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "school_section",
+   "fieldtype": "Section Break",
+   "label": "School"
+  },
+  {
+   "fieldname": "school_name",
+   "fieldtype": "Data",
+   "label": "School Name"
+  },
+  {
+   "fieldname": "school_motto",
+   "fieldtype": "Data",
+   "label": "Motto"
+  },
+  {
+   "fieldname": "school_logo",
+   "fieldtype": "Attach Image",
+   "label": "Logo",
+   "make_attachment_public": 1
+  },
+  {
+   "fieldname": "school_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "school_address",
+   "fieldtype": "Small Text",
+   "label": "Address"
+  },
+  {
+   "fieldname": "school_phone",
+   "fieldtype": "Data",
+   "label": "Phone",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "school_email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email"
+  },
+  {
+   "collapsible": 1,
+   "description": "Marks that may need a second look. Alerts are a warning only: they never block saving or publishing.",
+   "fieldname": "marks_alerts_section",
+   "fieldtype": "Section Break",
+   "label": "Marks Alerts"
+  },
+  {
+   "default": "1",
+   "description": "Turns the statistical checks on or off. Integrity checks (changes after publishing, entries by unassigned users, unpublishing) always run.",
+   "fieldname": "enable_marks_alerts",
+   "fieldtype": "Check",
+   "label": "Enable Statistical Checks"
+  },
+  {
+   "default": "10",
+   "description": "Class checks skip a subject with fewer submitted marks than this",
+   "fieldname": "alert_min_class_size",
+   "fieldtype": "Int",
+   "label": "Minimum Class Size",
+   "non_negative": 1
+  },
+  {
+   "default": "40",
+   "description": "Share of the class with exactly the same mark (0 and full marks not counted)",
+   "fieldname": "alert_identical_share",
+   "fieldtype": "Percent",
+   "label": "Identical Marks From (%)"
+  },
+  {
+   "default": "20",
+   "description": "Share of the class with 0",
+   "fieldname": "alert_zero_share",
+   "fieldtype": "Percent",
+   "label": "Zero Marks From (%)"
+  },
+  {
+   "default": "80",
+   "description": "Share of raw marks that are multiples of 5 (0 and full marks not counted); about 20% is normal",
+   "fieldname": "alert_round_share",
+   "fieldtype": "Percent",
+   "label": "Round Numbers From (%)"
+  },
+  {
+   "default": "3",
+   "description": "Standard deviation of the percentages below this raises an alert; 0 turns the check off",
+   "fieldname": "alert_min_std",
+   "fieldtype": "Float",
+   "label": "Minimum Spread (percentage points)",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "marks_alerts_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "4",
+   "description": "Earlier exams of the subject at the same Form needed before the class average is compared",
+   "fieldname": "alert_history_min_exams",
+   "fieldtype": "Int",
+   "label": "History: Minimum Exams",
+   "non_negative": 1
+  },
+  {
+   "default": "3.5",
+   "description": "Robust z-score (median / MAD) of the class average against its history",
+   "fieldname": "alert_class_z",
+   "fieldtype": "Float",
+   "label": "Class Average: z Above",
+   "non_negative": 1
+  },
+  {
+   "default": "4.5",
+   "description": "Robust z-score of a student's change against the class's median change",
+   "fieldname": "alert_student_z",
+   "fieldtype": "Float",
+   "label": "Student Change: z Above",
+   "non_negative": 1
+  },
+  {
+   "default": "20",
+   "description": "And the student's change differs from the class's by at least this many percentage points",
+   "fieldname": "alert_student_min_jump",
+   "fieldtype": "Float",
+   "label": "Student Change: Minimum Points",
+   "non_negative": 1
+  },
+  {
+   "default": "10",
+   "description": "And the class average differs from the usual average by at least this many percentage points",
+   "fieldname": "alert_class_min_diff",
+   "fieldtype": "Float",
+   "label": "Class Average: Minimum Points",
+   "non_negative": 1
+  },
+  {
+   "default": "30",
+   "description": "A student who had at least this percentage in the previous exam and now has 0 always gets a Medium alert (unless the whole class has many zeros)",
+   "fieldname": "alert_zero_drop_from",
+   "fieldtype": "Percent",
+   "label": "Dropped To Zero: Previous Mark From (%)"
+  },
+  {
+   "description": "Levels of the early-warning model's probability, separate from the rule-based risk score's levels",
+   "fieldname": "model_levels_section",
+   "fieldtype": "Section Break",
+   "label": "Early-Warning Model Levels"
+  },
+  {
+   "default": "30",
+   "fieldname": "model_medium_threshold",
+   "fieldtype": "Percent",
+   "label": "Medium From (%)"
+  },
+  {
+   "fieldname": "model_levels_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "60",
+   "fieldname": "model_high_threshold",
+   "fieldtype": "Percent",
+   "label": "High From (%)"
+  },
+  {
+   "fieldname": "interventions_section",
+   "fieldtype": "Section Break",
+   "label": "Interventions"
+  },
+  {
+   "default": "20",
+   "description": "Intervention Outcomes shows an estimate for one type of intervention only with at least this many matched students",
+   "fieldname": "intervention_min_sample",
+   "fieldtype": "Int",
+   "label": "Minimum Students per Type",
+   "non_negative": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-09-29 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
+ "name": "Smart School Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

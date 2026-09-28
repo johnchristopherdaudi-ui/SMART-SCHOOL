@@ -1,0 +1,77 @@
+{
+ "actions": [],
+ "creation": "2026-09-27 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "removed_feature",
+  "test_auc",
+  "auc_change",
+  "new_risk_auc",
+  "new_risk_auc_change",
+  "helps"
+ ],
+ "fields": [
+  {
+   "fieldname": "removed_feature",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Feature Removed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "test_auc",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Test AUC Without It",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
+   "description": "Negative: the model is worse without this feature",
+   "fieldname": "auc_change",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "AUC Change",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
+   "fieldname": "new_risk_auc",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "New-Risk AUC Without It",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
+   "fieldname": "new_risk_auc_change",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "New-Risk AUC Change",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
+   "description": "Removing it lowers the overall or the new-risk AUC by at least 0.005",
+   "fieldname": "helps",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Helps",
+   "read_only": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-28 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
+ "name": "Risk Model Ablation",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

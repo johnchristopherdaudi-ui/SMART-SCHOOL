@@ -1,0 +1,90 @@
+{% extends "smart_school/templates/parent_portal/base.html" %}
+
+{% block portal_style %}
+<style>
+:root {
+    --sp-primary: #0d3b66;
+    --sp-accent: #ffb703;
+    --sp-bg: #f4f6f9;
+}
+.sp-navbar { background: var(--sp-primary); padding: 14px 30px; }
+.sp-container { max-width: 480px; margin: 40px auto; padding: 0 20px; }
+.sp-checkout-card { background: #fff; border-radius: 16px; padding: 30px; box-shadow: 0 2px 15px rgba(0,0,0,0.08); text-align: center; }
+.sp-provider-badge { display: inline-block; background: var(--sp-bg); color: var(--sp-primary); padding: 6px 16px; border-radius: 20px; font-weight: 700; font-size: 13px; margin-bottom: 20px; }
+.sp-amount { font-size: 34px; font-weight: 800; color: var(--sp-primary); margin-bottom: 6px; }
+.sp-phone { color: #888; font-size: 14px; margin-bottom: 25px; }
+.sp-demo-note { background: #fff3cd; color: #856404; padding: 10px; border-radius: 8px; font-size: 12px; margin-bottom: 25px; }
+.sp-btn-row { display: flex; gap: 12px; }
+.sp-btn { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: 700; font-size: 14px; cursor: pointer; }
+.sp-btn-success { background: #198754; color: #fff; }
+.sp-btn-fail { background: #dc3545; color: #fff; }
+.sp-result { display: none; margin-top: 20px; padding: 16px; border-radius: 10px; font-size: 14px; }
+.sp-result.show { display: block; }
+.sp-result.ok { background: #d4edda; color: #155724; }
+.sp-result.bad { background: #f8d7da; color: #721c24; }
+.sp-back-link { display: inline-block; margin-top: 16px; color: var(--sp-primary); font-weight: 600; text-decoration: none; font-size: 14px; }
+</style>
+{% endblock %}
+
+{% block portal_content %}
+<div class="sp-container">
+    <div class="sp-checkout-card" id="checkoutCard">
+        <div class="sp-provider-badge">{{ log.provider | e }}</div>
+        <div class="sp-amount">{{ "{:,.0f}".format(log.amount) }} TZS</div>
+        <div class="sp-phone">Namba: {{ log.phone_number | e }}</div>
+
+        {% if log.status == "Pending" %}
+        <div class="sp-demo-note">
+            Hii ni demo ya malipo. Hakuna pesa halisi itakayotumika. Chagua matokeo ya kuiga.
+        </div>
+
+        <div class="sp-btn-row" id="btnRow">
+            <button class="sp-btn sp-btn-success" onclick="confirmPayment(1)">Simulate Success</button>
+            <button class="sp-btn sp-btn-fail" onclick="confirmPayment(0)">Simulate Failure</button>
+        </div>
+
+        <div class="sp-result" id="resultBox"></div>
+        {% elif log.status == "Success" %}
+        <div class="sp-result show ok">&#9989; Malipo yamefanikiwa!<br><a class="sp-back-link" href="{{ fees_url | e }}">Rudi kwenye Ada &rarr;</a></div>
+        {% else %}
+        <div class="sp-result show bad">&#10060; Malipo hayakufanikiwa. {{ (log.response_message or "") | e }}<br><a class="sp-back-link" href="{{ fees_url | e }}">Rudi kwenye Ada &rarr;</a></div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block portal_script %}
+<script>
+var FEES_URL = {{ fees_url | tojson }};
+
+function showResult(ok, message) {
+    var box = document.getElementById('resultBox');
+    box.className = 'sp-result show ' + (ok ? 'ok' : 'bad');
+    box.textContent = (ok ? '\u2705 Malipo yamefanikiwa! ' : '\u274C Malipo hayakufanikiwa. ') + (message || '');
+    var link = document.createElement('a');
+    link.className = 'sp-back-link';
+    link.href = FEES_URL;
+    link.textContent = 'Rudi kwenye Ada \u2192';
+    box.appendChild(document.createElement('br'));
+    box.appendChild(link);
+}
+
+function confirmPayment(success) {
+    document.getElementById('btnRow').style.display = 'none';
+
+    frappe.call({
+        method: 'smart_school.portal_utils.confirm_demo_payment',
+        args: {
+            reference: {{ reference | tojson }},
+            success: success
+        },
+        callback: function(r) {
+            showResult(r.message && r.message.success, r.message && r.message.message);
+        },
+        error: function() {
+            showResult(false);
+        }
+    });
+}
+</script>
+{% endblock %}

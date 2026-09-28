@@ -1,0 +1,88 @@
+{% extends "templates/base.html" %}
+{#- Public report card verification. Swahili, for phones, no navbar or footer, never indexed. -#}
+
+{% block meta_block %}
+<meta name="robots" content="noindex, nofollow">
+{% endblock %}
+
+{% block title %}Uthibitisho wa Report Card &middot; {{ school.name | e }}{% endblock %}
+
+{% block navbar %}{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block style %}
+<style>
+body { background: #f4f6f9; }
+.vf { max-width: 560px; margin: 0 auto; padding: 20px 14px 40px; font-size: 15px; color: #22333b; }
+.vf-school { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.vf-school img { width: 52px; height: 52px; object-fit: contain; background: #fff; border-radius: 8px; }
+.vf-school-name { font-weight: 700; font-size: 18px; color: #0d3b66; }
+.vf-status { border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; font-weight: 600; }
+.vf-status.valid { background: #d4edda; color: #155724; }
+.vf-status.changed { background: #fff3cd; color: #856404; }
+.vf-status.invalid, .vf-status.limited { background: #f8d7da; color: #721c24; }
+.vf-status small { display: block; font-weight: 400; margin-top: 4px; }
+.vf-card { background: #fff; border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.vf-card h3 { font-size: 15px; margin: 0 0 10px; color: #0d3b66; }
+.vf-facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin-bottom: 10px; }
+.vf-facts dt { color: #666; font-weight: 400; }
+.vf-facts dd { margin: 0; font-weight: 600; }
+table.vf-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.vf-table th { text-align: left; color: #777; font-size: 12px; border-bottom: 2px solid #eee; padding: 6px 4px; }
+table.vf-table td { border-bottom: 1px solid #f0f0f0; padding: 6px 4px; }
+table.vf-table .num { text-align: right; }
+</style>
+{% endblock %}
+
+{% macro results_card(title, info, results, issued_on=None) %}
+<div class="vf-card">
+    <h3>{{ title | e }}</h3>
+    <dl class="vf-facts">
+        {% if info %}
+        <dt>Jina</dt><dd>{{ info.student_name | e }}</dd>
+        <dt>Darasa</dt><dd>{{ info["class"] | e }}</dd>
+        <dt>Muhula</dt><dd>{{ info.term_name | e }}, {{ info.academic_year | e }}</dd>
+        {% endif %}
+        <dt>Wastani</dt><dd>{{ "%.2f" | format(results.average or 0) }}</dd>
+        <dt>Division</dt><dd>{{ (results.division or "-") | e }}</dd>
+        <dt>Points</dt><dd>{{ results.points if results.points is not none else "-" }}</dd>
+        {% if issued_on %}<dt>Ilitolewa</dt><dd>{{ frappe.utils.formatdate(issued_on, "dd-MM-yyyy") }}</dd>{% endif %}
+    </dl>
+    <table class="vf-table">
+        <tr><th>Somo</th><th class="num">Alama ya term (%)</th><th class="num">Grade</th></tr>
+        {% for s in results.subjects %}
+        <tr><td>{{ s.subject | e }}</td><td class="num">{{ "%.1f" | format(s.score) }}</td><td class="num">{{ s.grade | e }}</td></tr>
+        {% endfor %}
+    </table>
+</div>
+{% endmacro %}
+
+{% block content %}
+<div class="vf">
+    <div class="vf-school">
+        {% if school.logo %}<img src="{{ school.logo | e }}" alt="">{% endif %}
+        <div class="vf-school-name">{{ school.name | e }}</div>
+    </div>
+
+    {% if view.status == "valid" %}
+        <div class="vf-status valid">&#10004; Report card hii ni halali.
+            <small>Matokeo yaliyo hapa chini ni yale yaliyotolewa na shule.</small></div>
+        {{ results_card("Matokeo", view.issued, view.issued.results, view.issued_on) }}
+    {% elif view.status == "changed" %}
+        <div class="vf-status changed">&#9888; Matokeo yamebadilika tangu report card hii ilipotolewa.
+            <small>Linganisha na report card uliyonayo; kwa maswali wasiliana na shule.</small></div>
+        {{ results_card("Wakati wa kutolewa", view.issued, view.issued.results, view.issued_on) }}
+        {% if view.current %}
+            {{ results_card("Matokeo ya sasa", None, view.current) }}
+        {% else %}
+            <div class="vf-card">Shule inarekebisha matokeo haya; matokeo ya sasa yataonekana yakishachapishwa.</div>
+        {% endif %}
+    {% elif view.status == "limited" %}
+        <div class="vf-status limited">Maombi mengi mno kwa muda mfupi. Tafadhali jaribu tena baada ya dakika moja.</div>
+    {% else %}
+        <div class="vf-status invalid">&#10006; Report card hii si halali.
+            <small>Msimbo huu haupo kwenye kumbukumbu za shule, au umesitishwa. Wasiliana na shule.</small></div>
+    {% endif %}
+</div>
+<!-- /verification -->
+{% endblock %}
