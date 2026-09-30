@@ -58,6 +58,15 @@ for decision making, and gives parents a Swahili portal with their children's re
   "Kalenda ya Shule" page on the parent portal; optional SMS reminders.
 - One rule for school days, used everywhere attendance is counted: absence is measured on school days only.
 
+**Class attendance**
+- *Class Attendance* page (Academics and Headmaster workspaces), made for a phone: pick the class and the date;
+  everyone starts Present (or as already recorded, or Excused on an approved leave); tap P / A / L / E for the few
+  who differ (each button explains itself) and save once. Saving again corrects, never duplicates.
+- A day that is not a school day (weekend, holiday, break: the calendar says which) is saved only after a warning,
+  and its records are not counted. Future days and days outside the terms are refused.
+- Attendance is kept by the class teacher of the class, and by the Headmaster and System Manager for every class:
+  on the doctype itself (list, form and API), not only in the page.
+
 **Staff**
 - Workspaces: **Headmaster**, **Academics** (teachers), **Finance** (accountant) and **School Settings**
   (system manager), each opened by default after login.
@@ -79,8 +88,8 @@ for decision making, and gives parents a Swahili portal with their children's re
 | Role | Can do |
 |---|---|
 | System Manager | Everything, including Smart School Settings, grading tables and terms |
-| Headmaster | Admissions, students, guardians, teachers, exams (publish), term results and comments, all reports, promotion |
-| Teacher | Enter/import marks for assigned subjects, attendance, discipline, class teacher comments, academic reports for own classes |
+| Headmaster | Admissions, students, guardians, teachers, exams (publish), term results and comments, attendance of every class, school calendar, all reports, promotion |
+| Teacher | Enter/import marks for assigned subjects, discipline, class teacher comments, academic reports for own classes; attendance only as class teacher of the class |
 | Accountant | Fee structures, fee payments (submit/cancel), fee reports |
 | Parent | Parent portal only (Website User) |
 
@@ -146,6 +155,7 @@ A single suite: `bench --site test.localhost run-tests --module smart_school.tes
 | `test_report_card_verification` | Random tokens, same token for an unchanged card, valid/changed/invalid pages, nothing extra shown, revoke, drafts, rate limit, QR in the PDF |
 | `test_interventions` | Snapshot, who sees and edits, reminders and card, Hatua column, matching, per-protocol and intention-to-treat, minimum sample, report warning |
 | `test_school_calendar` | School days (weekends, holidays, breaks, class events, Saturdays), terms and exams from their own dates, attendance on school days, completeness and the Early Warning note, desk and portal calendars, SMS reminders |
+| `test_class_attendance` | Class teacher only for their class on the doctype and the API, Headmaster everywhere; the page: classes per role, Present by default, recorded days, weekend and holiday warnings, future and between-terms days refused, saving and correcting without duplicates |
 | `test_admission_form` | The public form in Swahili, values stored as before, Swahili messages for each mistake, desk entry unchanged |
 | `test_sms` | SMS parts (GSM-7 / UCS-2), placeholders, one SMS with long names, modes, consent (admission, portal, paper), numbers, quiet hours, limits, retries, expiry, once per exam, fee reminders and students who left, no sensitive SMS, who sees the outbox and report |
 
