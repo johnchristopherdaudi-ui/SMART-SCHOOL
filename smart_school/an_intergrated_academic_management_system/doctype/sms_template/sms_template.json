@@ -23,7 +23,7 @@
    "fieldname": "template_type",
    "fieldtype": "Select",
    "label": "Type",
-   "options": "Results Published\nPayment Received\nFee Reminder\nFee Overdue\nAnnouncement",
+   "options": "Results Published\nPayment Received\nFee Reminder\nFee Overdue\nAnnouncement\nEvent Reminder",
    "reqd": 1,
    "unique": 1,
    "in_list_view": 1
@@ -94,7 +94,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-09-30 10:00:00.000000",
+ "modified": "2026-10-01 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
  "name": "SMS Template",

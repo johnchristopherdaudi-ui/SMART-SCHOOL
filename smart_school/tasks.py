@@ -75,20 +75,23 @@ def calculate_risk_score(student, term=None, settings=None):
 	return score, level
 
 
-def get_risk_score(student, term, settings):
+def get_risk_score(student, term, settings, calendar=None):
 	"""(score, level, parts) for any term, without saving: the daily job stores it for the current term,
-	the risk model compares itself with it on past terms. term needs name, start_date and end_date."""
+	the risk model compares itself with it on past terms. term needs name, start_date and end_date.
+	calendar: a SchoolCalendar to reuse when scoring many students."""
+	from smart_school.school_calendar import attendance_records, count_attendance
+
 	parts = {}
 
-	# Attendance: Absent counts fully, Late half, Excused not at all
-	statuses = frappe.get_all("Attendance", filters={"student": student, "term": term.name}, pluck="status")
-	absences = statuses.count("Absent") + 0.5 * statuses.count("Late")
-	absence_rate = absences / len(statuses) * 100 if statuses else 0
+	# Attendance on school days: Absent counts fully, Late half, Excused not at all
+	counts = count_attendance(attendance_records({"student": student, "term": term.name}), calendar)
+	absence_rate = counts.absence_rate
 	parts["attendance"] = {
-		"days": len(statuses),
-		"absent": statuses.count("Absent"),
-		"late": statuses.count("Late"),
-		"excused": statuses.count("Excused"),
+		"days": counts.days,
+		"absent": counts.absent,
+		"late": counts.late,
+		"excused": counts.excused,
+		"not_school_days": counts.not_counted,
 		"rate": flt(absence_rate, 1),
 		"part": min(absence_rate / FULL_ABSENCE_RATE, 1),
 	}

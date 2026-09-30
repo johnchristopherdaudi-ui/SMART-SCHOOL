@@ -4,6 +4,9 @@ from frappe.model.document import Document
 
 class Attendance(Document):
 	def validate(self):
+		from smart_school.class_attendance import check_student
+
+		check_student(self)
 		self.check_duplicate()
 		if not self.get("class"):
 			self.set("class", frappe.get_cached_value("Student", self.student, "current_class"))

@@ -14,7 +14,7 @@ frappe.query_reports["SMS Summary"] = {
 			fieldname: "message_type",
 			label: __("Type"),
 			fieldtype: "Select",
-			options: "\nResults Published\nPayment Received\nFee Reminder\nFee Overdue\nAnnouncement",
+			options: "\nResults Published\nPayment Received\nFee Reminder\nFee Overdue\nAnnouncement\nEvent Reminder",
 		},
 	],
 };

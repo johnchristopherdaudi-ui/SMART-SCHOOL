@@ -8,6 +8,8 @@
  "field_order": [
   "exam_name",
   "term",
+  "start_date",
+  "end_date",
   "academic_year",
   "class",
   "max_marks",
@@ -105,12 +107,24 @@
    "label": "External Exam Type",
    "mandatory_depends_on": "is_external",
    "options": "External Exam Type"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date",
+   "description": "For the school calendar; empty: not shown"
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date",
+   "description": "Empty: one day"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-28 20:00:00.000000",
+ "modified": "2026-10-01 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
  "name": "Exam",

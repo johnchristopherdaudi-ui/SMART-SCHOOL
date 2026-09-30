@@ -56,7 +56,7 @@ def collect_rows(data=None):
 			if positive is None:
 				continue
 			features = data.features(student, before)
-			score = predict(model, features)[0] if model else get_risk_score(student, before, settings)[0]
+			score = predict(model, features)[0] if model else get_risk_score(student, before, settings, data.calendar)[0]
 			rows.append(
 				frappe._dict(
 					student=student,

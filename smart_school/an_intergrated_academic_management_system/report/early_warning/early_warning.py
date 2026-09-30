@@ -12,6 +12,7 @@ from smart_school.reports import (
 )
 from smart_school.interventions import get_interventions_text
 from smart_school.risk_model import get_active_model, get_prediction_term
+from smart_school.school_calendar import SchoolCalendar, completeness, get_completeness_min
 from smart_school.tasks import get_current_term
 
 SECTION_ORDER = {EMERGING: 0, ALREADY_AT_RISK: 1}
@@ -79,7 +80,7 @@ def execute(filters=None):
 		f"Chance of Division IV/0 or 3+ subjects with F in <b>{escape_html(term)}</b>, "
 		f"from the results and attendance of {escape_html(from_term or 'the last term')} "
 		f"(model {escape_html(model)}). The rule-based score of the same term is shown beside it."
-	)
+	) + completeness_note({r["class"] for r in data}, from_term)
 	summary = [
 		{"value": sum(r["section"] == EMERGING for r in data), "label": EMERGING, "indicator": "Orange"},
 		{"value": sum(r["section"] == ALREADY_AT_RISK for r in data), "label": ALREADY_AT_RISK, "indicator": "Red"},
@@ -119,7 +120,29 @@ def rule_based(filters, classes):
 	if current:
 		add_interventions(data, current.name)
 	message = f"No prediction model is in use. {escape_html(why)} Showing the rule-based risk score."
+	if current:
+		message += completeness_note({r["class"] for r in data}, current.name)
 	return get_columns(), data, message
+
+
+def completeness_note(classes, term):
+	"""A small warning for classes whose attendance was taken on too few of the term's school days: their
+	absence rates (and so the risk) rest on few days."""
+	if not term:
+		return ""
+	calendar = SchoolCalendar()
+	minimum = get_completeness_min()
+	low = []
+	for class_name in sorted(c for c in classes if c):
+		share = completeness(class_name, term, calendar)
+		if share is not None and share < minimum:
+			low.append(f"{escape_html(class_name)} {share:.0f}%")
+	if not low:
+		return ""
+	return (
+		f"<p class='text-muted small' style='margin-top:6px'>&#9888; Attendance in {escape_html(term)} was taken "
+		f"on fewer than {minimum:g}% of the school days in: {', '.join(low)}. Absence there may be understated.</p>"
+	)
 
 
 def add_interventions(data, term):

@@ -20,14 +20,17 @@ from frappe.utils import cint, flt, getdate, now_datetime, today
 
 from smart_school.results import INCOMPLETE, get_grade, get_subject_scores
 from smart_school.tasks import SEVERITY_POINTS, get_risk_score
+from smart_school.school_calendar import SchoolCalendar
 
 MODEL_FORMAT = "smart_school.risk_model"
 # Version 2 (2026-09-27): discipline_points removed (ablation: overall AUC change 0.0000).
 # Version 3 (2026-09-28): failed_subjects and no_previous_term removed: without either, neither the overall nor the
 # new-risk test AUC drops by 0.005 (+0.0016/+0.0041 and -0.0007/-0.0018). Absence and trend are kept by decision.
 # Version 4 (2026-09-28): trend removed by the owner's decision (it did not reach the 0.005 rule either).
+# Version 5 (2026-10-01): same features, but absence_rate counts school days only (smart_school.school_calendar):
+# records on holidays, breaks and weekends are left out, so v4 models no longer describe the data.
 # SchoolData still computes every feature, for the ablation report.
-FEATURE_SET_VERSION = 4
+FEATURE_SET_VERSION = 5
 FEATURES = ("average", "absence_rate")
 
 MIN_TRAIN_ROWS = 200
@@ -61,13 +64,16 @@ class SchoolData:
 				"Student Term Result", fields=["student", "term", "average", "division", "class"]
 			)
 		}
+		# Attendance on school days only (holidays, breaks and weekends left out)
+		self.calendar = SchoolCalendar()
 		self.attendance = {}
 		for r in frappe.db.sql(
-			"""select student, term, status, count(*) as days from `tabAttendance`
-			where ifnull(term, '') != '' group by student, term, status""",
+			"""select student, term, `class`, date, status from `tabAttendance` where ifnull(term, '') != ''""",
 			as_dict=True,
 		):
-			self.attendance.setdefault((r.student, r.term), {})[r.status] = r.days
+			if self.calendar.is_school_day(r.date, r["class"]):
+				days = self.attendance.setdefault((r.student, r.term), {})
+				days[r.status] = days.get(r.status, 0) + 1
 
 		starts = [getdate(t.start_date) for t in self.terms]
 		self.discipline = {}
@@ -374,7 +380,7 @@ def evaluate(test, model, data):
 	settings = frappe.get_cached_doc("Smart School Settings")
 	labels = [r.label for r in test]
 	probabilities = [predict(model, r.features)[0] for r in test]
-	rule_scores = [get_risk_score(r.student, r.term, settings)[0] for r in test]
+	rule_scores = [get_risk_score(r.student, r.term, settings, data.calendar)[0] for r in test]
 
 	model_flags, rule_flags = flag_top(test, probabilities), flag_top(test, rule_scores)
 	model_precision, model_recall = precision_recall(labels, model_flags)
@@ -759,7 +765,7 @@ def refresh_predictions(feature_term=None):
 		if not features:
 			continue
 		probability, contributions = predict(model, features)
-		rule_score, rule_level, _ = get_risk_score(student, term, settings)
+		rule_score, rule_level, _ = get_risk_score(student, term, settings, data.calendar)
 		values = {
 			"class": data.results[(student, term.name)]["class"],
 			"feature_term": term.name,

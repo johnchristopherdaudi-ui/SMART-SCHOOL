@@ -4,6 +4,7 @@ import frappe
 from frappe.utils import flt, formatdate, getdate
 
 from smart_school.branding import get_school_branding
+from smart_school.school_calendar import attendance_records, count_attendance
 from smart_school.verification import get_verification, qr_data_uri, verify_url
 from smart_school.results import (
 	BEST_SUBJECTS,
@@ -56,10 +57,7 @@ def get_report_card_data(term_result):
 	positions, ranked = get_class_positions(doc.get("class"), doc.term)
 	position = positions.get(doc.student)
 
-	statuses = frappe.get_all(
-		"Attendance", filters={"student": doc.student, "term": doc.term}, pluck="status"
-	)
-	attended = statuses.count("Present") + statuses.count("Late")
+	attendance = count_attendance(attendance_records({"student": doc.student, "term": doc.term}))
 
 	# Only a fully published term's report card is issued with a QR code; before that it is a draft
 	verification = get_verification(doc)
@@ -88,12 +86,12 @@ def get_report_card_data(term_result):
 		if position
 		else "Not ranked (fewer than 7 subjects)",
 		attendance=frappe._dict(
-			days=len(statuses),
-			present=statuses.count("Present"),
-			absent=statuses.count("Absent"),
-			late=statuses.count("Late"),
-			excused=statuses.count("Excused"),
-			rate=flt(attended / len(statuses) * 100, 1) if statuses else None,
+			days=attendance.days,
+			present=attendance.present,
+			absent=attendance.absent,
+			late=attendance.late,
+			excused=attendance.excused,
+			rate=flt(attendance.attended_rate, 1) if attendance.attended_rate is not None else None,
 		),
 		next_term_opens=formatdate(next_term[0].start_date, "dd MMMM yyyy")
 		if next_term

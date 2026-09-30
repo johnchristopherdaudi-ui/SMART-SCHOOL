@@ -28,10 +28,13 @@ class TestRiskScore(SchoolTestCase):
 			add_result(
 				student, current, subject, {"_T MATH": 20, "_T ENGLISH": 25}.get(subject, 40)
 			)  # avg 35, two F
-		start = frappe.db.get_value("Term", "_Test T3", "start_date")
-		for i, status in enumerate(["Absent", "Absent", "Late", "Late", "Excused"] + ["Present"] * 5):
+		from smart_school.school_calendar import SchoolCalendar
+
+		start, end = frappe.db.get_value("Term", "_Test T3", ["start_date", "end_date"])
+		school_days = SchoolCalendar().school_days(start, end)  # attendance counts on school days only
+		for day, status in zip(school_days, ["Absent", "Absent", "Late", "Late", "Excused"] + ["Present"] * 5):
 			frappe.get_doc(
-				{"doctype": "Attendance", "student": student, "date": add_days(start, i), "status": status}
+				{"doctype": "Attendance", "student": student, "date": day, "status": status}
 			).insert(ignore_permissions=True)
 		for severity in ("Minor", "Serious"):
 			frappe.get_doc(

@@ -1,0 +1,95 @@
+{% extends "smart_school/templates/parent_portal/base.html" %}
+
+{% block portal_style %}
+<style>
+.sp-container { max-width: 900px; margin: 0 auto; padding: 35px 20px; }
+.sp-welcome { font-size: 24px; font-weight: 700; color: var(--sp-text); margin-bottom: 8px; }
+.sp-sub { color: #777; font-size: 14px; margin-bottom: 22px; }
+.sp-section-title { font-size: 17px; font-weight: 700; color: var(--sp-text); margin: 26px 0 12px; }
+.sp-event { display: flex; gap: 14px; background: #fff; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+.sp-date { min-width: 54px; text-align: center; border-radius: 10px; background: #eef3f8; color: var(--sp-primary); padding: 6px 4px; }
+.sp-date .d { font-size: 22px; font-weight: 800; line-height: 1.1; }
+.sp-date .m { font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.sp-event h4 { margin: 0 0 4px; font-size: 16px; color: var(--sp-text); }
+.sp-event .when { font-size: 13px; color: #666; }
+.sp-event .desc { font-size: 13px; color: #555; margin-top: 4px; }
+.sp-kind { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 12px; margin-right: 6px; background: #eef3f8; color: var(--sp-primary); }
+.sp-kind.off { background: #fdecec; color: #c92a2a; }
+.kind-Public-Holiday .sp-date, .kind-Midterm-Break .sp-date { background: #fdecec; color: #c92a2a; }
+.kind-Exam .sp-date, .kind-Exam-Period .sp-date { background: #f0ebff; color: #5f3dc4; }
+.kind-Term .sp-date { background: #ebfbee; color: #2b8a3e; }
+.sp-empty { color: #888; padding: 22px; text-align: center; background: #fff; border-radius: 12px; }
+.sp-month-nav { display: flex; align-items: center; justify-content: space-between; margin: 26px 0 10px; }
+.sp-month-nav a { color: var(--sp-primary); font-weight: 700; text-decoration: none; padding: 6px 10px; }
+.sp-month-nav .title { font-size: 17px; font-weight: 700; }
+.sp-grid { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; background: #fff; border-radius: 12px; padding: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+.sp-grid th { font-size: 11px; color: #888; font-weight: 700; text-align: center; padding: 4px 0; }
+.sp-grid td { text-align: center; vertical-align: top; height: 46px; border-radius: 8px; font-size: 14px; padding: 4px 0; }
+.sp-grid td.out { color: #ccc; }
+.sp-grid td.weekend { color: #999; }
+.sp-grid td.off { background: #fdecec; color: #c92a2a; font-weight: 700; }
+.sp-grid td.today { outline: 2px solid var(--sp-primary); }
+.sp-dots { display: flex; justify-content: center; gap: 3px; margin-top: 3px; }
+.sp-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sp-primary); }
+.sp-dot.Exam, .sp-dot.Exam-Period { background: #7048e8; }
+.sp-dot.Term { background: #2f9e44; }
+.sp-dot.Public-Holiday, .sp-dot.Midterm-Break { background: #e03131; }
+.sp-legend { font-size: 12px; color: #777; margin: 8px 2px 0; }
+</style>
+{% endblock %}
+
+{% macro event_card(e) %}
+<div class="sp-event kind-{{ e.kind | replace(' ', '-') | e }}">
+    <div class="sp-date"><div class="d">{{ e.day }}</div><div class="m">{{ e.month_short | e }}</div></div>
+    <div>
+        <h4>{{ e.title | e }}</h4>
+        <div>
+            <span class="sp-kind">{{ e.kind_label | e }}</span>
+            {% if e.no_school %}<span class="sp-kind off">Hakuna masomo</span>{% endif %}
+        </div>
+        <div class="when">{{ e.when | e }}</div>
+        {% if e.description %}<div class="desc">{{ e.description | e }}</div>{% endif %}
+    </div>
+</div>
+{% endmacro %}
+
+{% block portal_content %}
+<div class="sp-container">
+    <div class="sp-welcome">Kalenda ya Shule</div>
+    <div class="sp-sub">Mihula, mitihani, sikukuu na matukio ya shule yanayohusu watoto wako.</div>
+
+    <div class="sp-section-title">Yanayokuja (siku {{ upcoming_days }} zijazo)</div>
+    {% for e in upcoming %}{{ event_card(e) }}{% else %}
+    <div class="sp-empty">Hakuna tukio katika siku {{ upcoming_days }} zijazo.</div>
+    {% endfor %}
+
+    <div class="sp-month-nav">
+        <a href="/parent-portal/kalenda?mwezi={{ previous_month | urlencode }}" aria-label="Mwezi uliopita">&larr;</a>
+        <span class="title">{{ month_title | e }}</span>
+        <a href="/parent-portal/kalenda?mwezi={{ next_month | urlencode }}" aria-label="Mwezi ujao">&rarr;</a>
+    </div>
+    <table class="sp-grid">
+        <thead><tr>{% for d in weekdays %}<th>{{ d | e }}</th>{% endfor %}</tr></thead>
+        <tbody>
+        {% for week in weeks %}
+        <tr>
+            {% for c in week %}
+            <td class="{% if not c.in_month %}out{% endif %} {% if c.weekend %}weekend{% endif %} {% if c.no_school and c.in_month %}off{% endif %} {% if c.is_today %}today{% endif %}">
+                {{ c.day }}
+                {% if c.in_month and c.kinds %}
+                <div class="sp-dots">{% for k in c.kinds %}<span class="sp-dot {{ k | replace(' ', '-') | e }}"></span>{% endfor %}</div>
+                {% endif %}
+            </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <div class="sp-legend">Siku nyekundu: hakuna masomo (sikukuu au mapumziko). Kijani: muhula unaanza au kuisha. Zambarau: mitihani.</div>
+
+    <div class="sp-section-title">Matukio ya {{ month_title | e }}</div>
+    {% for e in month_items %}{{ event_card(e) }}{% else %}
+    <div class="sp-empty">Hakuna tukio mwezi huu.</div>
+    {% endfor %}
+</div>
+{% endblock %}

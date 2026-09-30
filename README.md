@@ -52,6 +52,12 @@ for decision making, and gives parents a Swahili portal with their children's re
 - Off / Test / Live; daily and monthly limits, a price per SMS, quiet hours (21:00–07:00), retries, an SMS Outbox
   and an SMS Summary report.
 
+**School calendar** (see *School calendar* below)
+- School Events (holidays, breaks, exam periods, meetings, sports day, graduation...) for the whole school or some
+  classes; terms and exams (their own dates) appear on the calendar by themselves. Month view on the desk; a Swahili
+  "Kalenda ya Shule" page on the parent portal; optional SMS reminders.
+- One rule for school days, used everywhere attendance is counted: absence is measured on school days only.
+
 **Staff**
 - Workspaces: **Headmaster**, **Academics** (teachers), **Finance** (accountant) and **School Settings**
   (system manager), each opened by default after login.
@@ -139,8 +145,37 @@ A single suite: `bench --site test.localhost run-tests --module smart_school.tes
 | `test_early_warning` | Early Warning groups, class teacher scope, Emerging Risk card, rule-based fallback, nothing for parents |
 | `test_report_card_verification` | Random tokens, same token for an unchanged card, valid/changed/invalid pages, nothing extra shown, revoke, drafts, rate limit, QR in the PDF |
 | `test_interventions` | Snapshot, who sees and edits, reminders and card, Hatua column, matching, per-protocol and intention-to-treat, minimum sample, report warning |
+| `test_school_calendar` | School days (weekends, holidays, breaks, class events, Saturdays), terms and exams from their own dates, attendance on school days, completeness and the Early Warning note, desk and portal calendars, SMS reminders |
 | `test_admission_form` | The public form in Swahili, values stored as before, Swahili messages for each mistake, desk entry unchanged |
 | `test_sms` | SMS parts (GSM-7 / UCS-2), placeholders, one SMS with long names, modes, consent (admission, portal, paper), numbers, quiet hours, limits, retries, expiry, once per exam, fee reminders and students who left, no sensitive SMS, who sees the outbox and report |
+
+## School calendar
+
+Code: `smart_school/school_calendar.py`; doctype **School Event**; desk calendar (School Event > Calendar); portal
+page `/parent-portal/kalenda` (short link `/kalenda`); number card **Attendance Completeness**.
+
+- **School days**: the days of a term, Monday to Friday (*Saturday Is a School Day* in Smart School Settings adds
+  Saturdays), without the days covered by a School Event that is not a school day (a holiday, a midterm break) for
+  the whole school or the class. A School Event marked as a school day turns a weekend day into one (a make-up
+  Saturday); it never cancels a holiday.
+- **Holidays**: the fixed national holidays (New Year, Zanzibar Revolution, Karume, Union, Workers, Saba Saba, Nane
+  Nane, Nyerere, Independence, Christmas, Boxing Day) are installed, repeating every year. Holidays that move (Good
+  Friday, Easter Monday, Eid, Maulid) are added by the Headmaster each year.
+- **Terms and exams** are read from their own dates each time (Exam has an optional start and end date): change a
+  term or an exam and both calendars follow. They cannot be dragged on the calendar; they are changed on their forms.
+- **Attendance on school days only**: the attendance summary, the absence chart, the parent dashboard, the report
+  card, the risk score and the risk model all use `count_attendance`: records on days that are not school days are
+  left out (shown as *Not School Days* in the Attendance Summary). A school day without a record is not absence: it
+  lowers the **attendance completeness** (school days with attendance taken / school days so far), shown per class in
+  the Attendance Summary and on the Headmaster workspace. Early Warning notes the classes below *Attendance
+  Completeness Warning Below* (80%): their absence rates rest on few days.
+- **Model**: the absence rate now counts school days only, so the feature set is version 5 (same features); a
+  version 4 model is refused and the model must be trained again.
+- **Parent portal**: coming events (60 days) and a month grid, in Swahili, for the parent's children's classes:
+  events marked *Show on Parent Portal*, term openings and closings, and their classes' exams.
+- **SMS reminder** (optional, per event): *Remind Parents by SMS* with *Days Before* sends one SMS per guardian of the
+  event's classes through the SMS system (consent, limits, quiet hours); switching it on shows the count and cost
+  first. Not for events that repeat every year.
 
 ## SMS to parents
 
@@ -174,6 +209,7 @@ doctypes **SMS Outbox** and **SMS Template**; report **SMS Summary** (Headmaster
 | Fee Reminder | once, in the 7 days before a term starts, if anything is owed (switch, default off) | `{shule}: {muhula} inaanza {tarehe}. Ada ya {mwanafunzi}: TZS {kiasi}{deni}. Lipa: {kiungo}` |
 | Fee Overdue | once, from 30 days after a term started (for 14 days, so old terms are not dug up), if still owed (switch, default off) | `{shule}: {mwanafunzi} ana deni la ada TZS {salio} ({muhula}, siku {siku}). Tafadhali lipa: {kiungo}` |
 | Announcement | the Headmaster presses *Also Send by SMS* | `{shule}: Tangazo - {kichwa}. Soma zaidi: {kiungo}` |
+| Event Reminder | daily, from *Days Before* a School Event with *Remind Parents by SMS* | `{shule}: Kumbusho - {tukio}, {tarehe}. Kalenda ya shule: {kiungo}` |
 
   `{wastani}` is the student's average in that exam; `{division}` is ", Division II" once every exam of the term is
   published, else nothing. Before-term reminders go to active students still at school; nobody gets a reminder
@@ -236,8 +272,8 @@ Prediction**; reports **Early Warning** and **Model Performance**; number card *
   included (their history counts); only Active students get predictions.
 - **Label**: term *t + 1* ends in Division IV or 0, or with 3 or more subjects graded F. A term *t + 1* that is
   *Incomplete* (fewer than 7 subjects) is left out.
-- **Features** (feature set version 4, from term *t* only): the term average and the absence rate (Absent counts 1,
-  Late ½, Excused 0). Gender is never a feature; it is used only to compare fairness. Earlier versions also had
+- **Features** (feature set version 5, from term *t* only): the term average and the absence rate on school days
+  (Absent counts 1, Late ½, Excused 0; version 4 had the same features but counted every record). Gender is never a feature; it is used only to compare fairness. Earlier versions also had
   discipline points (v1), subjects with F and "no previous term" (up to v2), and the change in average (up to v3);
   see *Ablation*.
 - **Model**: `StandardScaler` + `LogisticRegression` (L2, C = 1, no class weights, so the probabilities keep their
@@ -307,7 +343,10 @@ SMS. It follows the school's exam structure: one main exam per term, out of 100 
 *Terminal*, Term 3 *Annual*), plus external exams that join a term with weights: a *District Exam* for Form 2 in
 Term 1 (Midterm 60%, District 40%) and the Form 4 *Mock* in Term 2 (Terminal 70%, Mock 30%). In the generator,
 absence and difficult terms lower results in the same and the next term, students who sat an exam never score
-exactly 0, and gender has no effect.
+exactly 0, and gender has no effect. The school calendar is filled in as a Headmaster would: the moving holidays
+(Easter, Eid, Maulid), a week's midterm break in every term, parents' meetings, sports day and Form 4 graduation,
+exam dates (a week of papers for the main exam), and an upcoming Form 4 parents' meeting with an SMS reminder.
+Attendance is recorded on school days only.
 
 Interventions in the demo are chosen with a deliberate selection bias: from the second year on, at the start of a
 term, the school acts for some students who looked at risk in the term before (an average below 35 or a high
@@ -319,10 +358,15 @@ and intention-to-treat 4 x the completed share, and the effect that really reach
 checks that the Intervention Outcomes report can find a known effect through the bias; it says nothing about
 whether interventions help real students.
 
-The run of 2026-09-28 (seed 42) made 449 students (280 active) over 2024–2026, 42 exams (37 published), 23,643 exam
-results, 167,271 attendance days, 662 discipline records, 4,396 fee payments and 265 interventions.
+The run of 2026-09-30 (seed 42) made 449 students (281 active) over 2024–2026, 42 exams (37 published, each with its
+dates), 23,715 exam results, 150,595 attendance days (school days only), 603 discipline records, 4,462 fee payments,
+316 interventions and 37 school calendar events besides the 11 fixed holidays.
 
-**Marks alerts**: 26 alerts; every planted problem was found except the swapped marks:
+**Calendar**: school days per term 54–56 (Term 1), 65 (Term 2) and 66 (Term 3); holidays and the midterm break take
+6–8 weekdays out of each term. The school takes attendance on every school day, so completeness is 100% in every
+class (the Attendance Completeness card shows 100%) and Early Warning shows no completeness note.
+
+**Marks alerts**: 25 alerts; every planted problem was found except the swapped marks:
 
 | Planted | Found |
 |---|---|
@@ -331,44 +375,46 @@ results, 167,271 attendance days, 662 discipline records, 4,396 fee payments and
 | Marks typed against the wrong names (2 pairs swapped, Form 2 Mathematics, Term 2 2026) | **0 of 4** |
 | Entered by an unassigned teacher; changed after publishing (teacher and Headmaster); results unpublished | yes (each) |
 
-The swapped marks were missed because that class's changes in Mathematics varied unusually widely this time (MAD 13
-points, against 8–11 in the other subjects of the exam, Biology with its planted zeros aside): the four students'
-robust z were 3.0 to 3.6, under the
-threshold of 4.5. The previous run (other random marks) found all 4. Not planted: 13 *Unusual Student Change*
-alerts over three years (6 in 2026); no *Dropped To Zero* and no *Unusual Class Average*. One *Many Identical Marks*
-(Civics, Form 1, Term 3 2024) follows from the planted low spread (marks of 59–61), and one *Changed After
-Publish* (Physics) from the mark corrected while the Form 2 Terminal exam was unpublished. External exams are
-compared only with earlier exams of the same type, fewer than 4 so far, so the class-average check skips them.
+The swapped marks were missed again, as in the run before: the four students' robust z were 3.4, 3.3, −2.6 and −4.2
+against the threshold of 4.5, with an ordinary spread this time (MAD 10 points in Mathematics, 7–9 in the other
+subjects). Swapping the weakest and strongest students of a class moves each by far, but at z 4.5 that is often not
+far enough. Not planted: 12 *Unusual Student Change* alerts over three years (1 in 2026) and one *Unusual Class
+Average* (Form 1 Kiswahili, Annual 2025: 44.2% against a median of 54.3% over 5 earlier exams); no *Dropped To Zero*.
+One *Changed After Publish* (Physics) follows from the mark corrected while the Form 2 Terminal exam was unpublished.
 
-**Model** (RM-00001 on the demo site, feature set 4: term average and absence rate; trained on target terms Term 2
-2024 to Term 3 2025, 1,287 student-terms, 404 at risk; tested on Term 1 and Term 2 2026, 450 student-terms, 126 at
-risk, base rate 28.0%):
+**Model** (RM-00001 on the demo site, feature set 5: term average and absence rate on school days; trained on target
+terms Term 2 2024 to Term 3 2025, 1,294 student-terms, 419 at risk; tested on Term 1 and Term 2 2026, 460
+student-terms, 148 at risk, base rate 32.2%):
 
 | Measure | Model | Rule-based | Difference (95% CI) |
 |---|---|---|---|
-| AUC | 0.890 | 0.836 | +0.054 (+0.031 to +0.080) |
-| Precision @ top 10% | 89.1% | 87.0% | |
-| Recall @ top 10% | 32.5% | 31.7% | |
-| Brier score | 0.117 | | |
-| New risk: AUC (322 students, 38 fell) | 0.796 (0.725–0.858) | 0.670 (0.582–0.752) | +0.063 to +0.190 |
-| New risk: precision @ top 10% | 27.3% (12.5–44.1) | 18.2% (6.1–32.4) | −3.1 to +24.2 points |
-| New risk: recall @ top 10% | 23.7% | 15.8% | |
+| AUC | 0.904 | 0.858 | +0.047 (+0.025 to +0.070) |
+| Precision @ top 10% | 97.9% | 87.2% | |
+| Recall @ top 10% | 31.1% | 27.7% | |
+| Brier score | 0.116 | | |
+| New risk: AUC (312 students, 43 fell) | 0.852 (0.788–0.906) | 0.728 (0.648–0.808) | +0.061 to +0.188 |
+| New risk: precision @ top 10% | 50.0% (31.3–65.6) | 34.4% (15.2–53.1) | −3.1 to +31.3 points |
+| New risk: recall @ top 10% | 37.2% (16 of 43) | 25.6% (11 of 43) | |
 
-Calibration (predicted against observed, by decile of predicted risk, 45 students each):
+Calibration (predicted against observed, by decile of predicted risk, 46 students each):
 
 | Decile | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Predicted | 1% | 4% | 7% | 10% | 16% | 25% | 37% | 53% | 77% | 97% |
-| Observed | 0% | 2% | 2% | 7% | 13% | 24% | 31% | 36% | 71% | 93% |
+| Predicted | 1% | 3% | 6% | 11% | 19% | 31% | 44% | 61% | 79% | 95% |
+| Observed | 0% | 0% | 4% | 7% | 17% | 33% | 33% | 61% | 72% | 96% |
 
-Fairness at the top-10% cut:
+Fairness at the top-10% cut (no warning: both gaps are under 10 points):
 
 | | Students | At risk | Listed | Precision | Recall |
 |---|---|---|---|---|---|
-| Female, model | 212 | 50 | 15 | 87% | 26% |
-| Male, model | 238 | 76 | 31 | 90% | 37% |
-| Female, rule-based | 212 | 50 | 14 | 71% | 20% |
-| Male, rule-based | 238 | 76 | 32 | 94% | 39% |
+| Female, model | 239 | 76 | 27 | 100% | 36% |
+| Male, model | 221 | 72 | 20 | 95% | 26% |
+| Female, rule-based | 239 | 76 | 28 | 86% | 32% |
+| Male, rule-based | 221 | 72 | 19 | 89% | 24% |
+
+**Early Warning** (Term 3 2026, from Term 2 2026): 114 students, 89 already at risk (69 High, 20 Medium) and 25
+emerging (23 Medium, 2 High); 57 of them have an intervention. Predictions for the 271 active students with results:
+High 71, Medium 43, Low 157.
 
 Ablation (change in test AUC when a feature is removed; negative means the feature helps). The rows for feature sets
 1–3 were measured on the earlier demo data, which had two exams in every term:
@@ -379,32 +425,31 @@ Ablation (change in test AUC when a feature is removed; negative means the featu
 | v2 | subjects with F | +0.002 | +0.004 | removed in v3 |
 | v2 | no previous term | −0.001 | −0.002 | removed in v3 |
 | v3 | change in average | −0.002 | −0.004 | removed in v4 by decision (AUC 0.897 → 0.896, new risk 0.746 → 0.743) |
-| v4 | term average | −0.131 | −0.159 | kept |
-| v4 | absence rate | −0.004 | −0.008 | kept |
+| v5 | term average | −0.180 | −0.153 | kept |
+| v5 | absence rate | −0.002 | −0.012 | kept (always kept, by decision) |
 
-**Interventions** (the effect is planted, see above): 265 interventions, 212 in finished terms (168 Completed,
-44 Cancelled: completed share 0.792) and 53 In Progress in Term 3 2026; 29 of those have reached their follow-up
-date, and their responsible teachers have a ToDo (*Follow-ups Due* shows 29). The manifest says what to expect:
-per-protocol 4 (3.95 reached the term averages), intention-to-treat 4 x 0.792 = 3.17 (3.11 reached them).
-Intervention Outcomes on the demo site (risk by RM-00001; terms T from Term 1 2025 to Term 2 2026):
+**Interventions** (the effect is planted, see above): 316 interventions, 259 in finished terms (205 Completed,
+54 Cancelled: completed share 0.792) and 57 In Progress in Term 3 2026; 37 have reached their follow-up date and
+their responsible teachers have a ToDo. The manifest says what to expect: per-protocol 4 (3.93 reached the term
+averages), intention-to-treat 4 x 0.792 = 3.17 (3.13 reached them). Intervention Outcomes on the demo site (risk
+by RM-00001; terms T from Term 1 2025 to Term 2 2026):
 
 | | With intervention | Matched comparison | Difference (95% CI) | Raw difference |
 |---|---|---|---|---|
-| Per-protocol: change in average (points) | +3.0 (159) | +2.1 (270) | **+1.0 (−1.5 to +3.1)** | +4.5 |
-| Per-protocol: at risk in T | 66.7% | 68.1% | −1.4 points (−9.3 to +6.9) | +44.0 points |
-| Intention-to-treat: change in average (points) | +2.8 (202) | +2.0 (270) | **+0.9 (−1.1 to +3.1)** | +4.3 |
-| Intention-to-treat: at risk in T | 67.8% | 68.9% | −1.0 points (−8.5 to +6.9) | +45.1 points |
+| Per-protocol: change in average (points) | +3.6 (200) | −1.0 (275) | **+4.6 (+2.3 to +7.0)** | +5.7 |
+| Per-protocol: at risk in T | 66.5% | 79.9% | −13.4 points (−21.8 to −5.1) | +42.3 points |
+| Intention-to-treat: change in average (points) | +3.2 (251) | −1.0 (293) | **+4.2 (+2.2 to +6.3)** | +5.2 |
+| Intention-to-treat: at risk in T | 68.1% | 80.4% | −12.2 points (−19.6 to −4.7) | +43.9 points |
 
-Balance (per-protocol): term t average 28.7 for treated students against 50.7 for the comparison before matching
-and 28.7 after; absence 16.7% against 7.0% before and 14.9% after. No treated student was left out for lack of a
-comparison student in their stratum.
+Balance (per-protocol): term t average 29.7 for treated students against 51.5 for the comparison before matching
+and 29.8 after; absence 15.9% against 6.7% before and 14.5% after. No treated student was left out.
 
-**Neither interval contains the planted effect** (4 and 3.2): the demo school is one of the 2 in 30 below. The
-matching did its part (balance, and a raw difference of +44 points in at-risk shrinks to about −1), but in this
-school the matched comparison students happened to improve almost as much (+2.1 against +3.0). By type (per-protocol):
-Counseling −0.1, Extra Classes −0.7, Parent Meeting +2.2, Teacher Follow-up +0.3 points, each with an interval
-about 7–9 points wide; Other (8) and Referral (3) are under the minimum of 20. Every type got the same planted +4,
-so these differences are chance, which is what the report's warning about many comparisons is for.
+Both intervals contain what reached the averages (3.93 and 3.13). The raw differences are too large (regression to
+the mean), and the raw at-risk difference points the wrong way (+42 points: the school chose students already at
+risk); matching turns it into −13 points. By type (per-protocol): Counseling +4.2, Extra Classes +4.2, Parent
+Meeting +4.1, Teacher Follow-up +5.4 points, each with an interval 7–9 points wide; Other (13) and Referral (5) are
+under the minimum of 20. Every type got the same planted +4, so their differences (and the at-risk differences,
+from −4 to −24 points) are chance: what the report's warning about many comparisons is for.
 
 **Checking the method on 30 schools.** The same generator and the same estimator (`intervention_outcomes.analyse`)
 were run outside a site on 30 generated schools (seeds 1–29 and 42). There the risk deciles come from a fixed
@@ -414,81 +459,76 @@ by comparing every mark with the mark the student would have had without the int
 
 | Change in average from t to T (points) | Per-protocol | Intention-to-treat |
 |---|---|---|
-| Planted effect that reached the averages (mean of 30) | +3.94 | +3.13 |
-| Matched estimate: mean of 30 (SD) | +3.82 (1.15) | +3.12 (1.08) |
-| Matched estimate: lowest to highest | +0.99 (seed 42) to +6.60 (seed 26) | +0.90 (seed 42) to +6.14 (seed 26) |
-| 95% interval contains the effect that reached the averages | 28 of 30 | 28 of 30 |
+| Planted effect that reached the averages (mean of 30) | +3.94 | +3.16 |
+| Matched estimate: mean of 30 (SD) | +3.92 (1.05) | +3.21 (1.00) |
+| Matched estimate: lowest to highest | +1.64 (seed 28) to +5.27 (seed 21) | +1.21 (seed 28) to +5.19 (seed 17) |
+| 95% interval contains the effect that reached the averages | 30 of 30 | 30 of 30 |
 | Width of the 95% interval (mean) | 4.9 | 4.6 |
-| Raw difference, no matching: mean (range) | +6.4 (+4.5 to +8.9) | +5.7 (+4.3 to +8.2) |
-| At risk in T, matched: mean (range) | −10.3 (−19.8 to −1.8) points | −8.3 (−18.7 to −1.8) points |
-| At risk in T, raw: mean (range) | +41.5 (+34.5 to +49.6) points | +43.4 (+34.0 to +48.8) points |
+| Raw difference, no matching: mean (range) | +6.5 (+5.0 to +8.1) | +5.8 (+4.2 to +7.0) |
+| At risk in T, matched: mean (range) | −10.5 (−19.5 to −5.5) points | −8.4 (−15.2 to −4.0) points |
+| At risk in T, raw: mean (range) | +41.4 (+29.8 to +51.5) points | +43.7 (+36.5 to +49.8) points |
 
-Balance, per-protocol, mean of 30: term t average 28.8 for treated students against 52.0 for all comparison
-students before matching and 29.2 after; absence 16.3% against 7.4% before and 15.7% after.
+Balance, per-protocol, mean of 30: term t average 29.0 for treated students against 52.0 for all comparison
+students before matching and 29.6 after; absence 16.3% against 7.3% before and 15.4% after.
 
 What this shows:
-- **Matching removes the bias here.** On average the matched estimates land on the planted effect (3.82 against
-  3.94, 3.12 against 3.13). The raw differences are too large in every school, because treated students had a bad
-  term t and bounce back anyway (regression to the mean), and the raw at-risk difference points the wrong way
-  (about +40 points: the school chose students who were already at risk). In the generator the school chooses only
-  on what the risk score sees; in a real school it also sees things the score does not, and matching cannot
-  remove those.
-- **Why one school can miss.** One school gives one estimate, and it moves from school to school by about 1.1
-  points (SD) around the truth, depending on which students happen to be treated and which comparison students
-  fall in each term and decile. With about 160 treated students and averages that move several points from term
-  to term for reasons of their own, an interval about 5 points wide is as narrow as it gets. A 95% interval is
-  built to miss the true value in about 1 school in 20; here it missed in 2 of 30, once low (seed 42) and once
-  high (seed 26).
-- **The demo is one of the misses.** Seed 42 is the demo school, and on the demo site, with the trained model, it
-  gives nearly the same answer as here (+1.0 and +0.9). It is reported as it came out, without changing the seed
-  or the size of the data: choosing a seed because it gives the planted answer would be choosing the result. Read
-  the demo's interval as one draw; the 30 schools are the check of the method.
+- **Matching removes the bias here.** On average the matched estimates land on the planted effect (3.92 against
+  3.94, 3.21 against 3.16). The raw differences are too large in every school (regression to the mean), and the
+  raw at-risk difference points the wrong way. In the generator the school chooses only on what the risk score
+  sees; in a real school it also sees things the score does not, and matching cannot remove those.
+- **One school is one draw.** The estimate moves from school to school by about 1 point (SD) around the truth, so
+  a single school can be 2–3 points off. A 95% interval is built to miss the true value in about 1 school in 20.
+  This time none of the 30 missed; with the generator before the school calendar (other random draws) 2 of 30 did,
+  and one of them was the demo school (+1.0, interval −1.5 to +3.1). The demo is reported as it comes out each
+  time, without choosing the seed or the size of the data.
 
-**SMS** (Test mode: nothing is sent; `demo_data.add_sms_demo`, run on this demo after it was made, with its own
-random numbers so nothing above changed): 344 of 410 guardians agreed on the admission form (85%), and 3 of their
-numbers were typed with a digit missing. The results of the 4 exams published in Term 2 2026 (Form 1, 3 and 4
-Terminal, Form 4 Mock) and the receipts of the last 14 days' 49 payments gave 314 messages:
+**SMS** (Test mode: nothing is sent): 344 of 410 guardians agreed on the admission form (85%), and 3 of their numbers
+were typed with a digit missing. The results of the 4 exams published in Term 2 2026 (Form 1, 3 and 4 Terminal,
+Form 4 Mock) and the receipts of the last 14 days' 37 payments gave 301 messages:
 
 | | Test (recorded, not sent) | Skipped (no consent) | Failed (wrong number) |
 |---|---|---|---|
-| Results Published | 232 | 32 | 1 |
-| Payment Received | 41 | 8 | 0 |
+| Results Published | 235 | 27 | 2 |
+| Payment Received | 29 | 8 | 0 |
 
-Every message fits in one SMS (111 characters on average, 121 at most), so 273 SMS would have cost TZS 6,825.
-A results message reads: *Mwanga SS: Pendo John Kisanga - Terminal: wastani 53.3%, Division II. Zaidi:
-http://demo.localhost:8000/matokeo* (the division shows because every exam of that term is published). The link
-uses the site's address; set `host_name` to the address parents use.
+Every message fits in one SMS (103 characters on average, 123 at most), so 264 SMS would have cost TZS 6,600. A
+results message reads: *Mwanga SS: Abdallah Paulo Haule - Mock: wastani 56.6%, Division I. Zaidi:
+&lt;host_name&gt;/matokeo* (the division shows because every exam of that term is published). The link uses the site's
+`host_name`: set it to the address parents use. The Form 4 parents' meeting of 16 October 2026 has an SMS reminder 3
+days before; the daily job writes it on 13 October.
 
 ### Limitations
 
 - **Synthetic data.** The links between absence, results and next term were written into the generator, so the
   model partly rediscovers them. The results say that the method works, not that it will work as well in a real
   school; it must be measured again on real data before anyone relies on it.
-- **Small new-risk sample.** Only 38 students who were not at risk became at risk in the test terms. The model's
-  new-risk AUC is better (interval +0.063 to +0.190), but the precision difference runs from −3 to +24 points, so
+- **Small new-risk sample.** Only 43 students who were not at risk became at risk in the test terms. The model's
+  new-risk AUC is better (interval +0.061 to +0.188), but the precision difference runs from −3 to +31 points, so
   it is not shown to flag them more precisely than the rule-based score.
-- **Calibration in the middle.** The probabilities are close at both ends but somewhat too high in between, most in
-  deciles 7–8 (decile 8 says 53%, 36% happened; decile 7 says 37%, 31% happened); each decile has only 45
-  students. The level thresholds (30% and 60%) fall in that region.
-- **Fairness on small groups.** At the top-10% cut 15 girls and 31 boys are listed; the recall gap (11 points for
-  the model, 19 for the rule-based score, whose precision gap is 22 points) raises the warning, although the
-  generator gives gender no effect. It is most likely chance, but the check must be repeated on real data.
-- **Top-10% precision** is high for both (89% and 87%) because the students ranked first are the obvious cases;
+- **Calibration in the middle.** The probabilities are close at both ends and in deciles 5, 6 and 8; decile 7 says
+  44% where 33% happened, and deciles 2–4 are a little high. Each decile has only 46 students, and the level
+  thresholds (30% and 60%) fall in that region.
+- **Fairness on small groups.** At the top-10% cut 27 girls and 20 boys are listed; the gaps (recall 9 points for
+  the model, 8 for the rule-based score) stay under the 10-point warning, and the generator gives gender no effect.
+  The previous run, with other random draws, crossed it; the check must be repeated on real data.
+- **Top-10% precision** is high for both (98% and 87%) because the students ranked first are the obvious cases;
   the new-risk measures are the harder test.
-- **Intervention outcomes are one draw.** In a school of this size the estimate moves by about 1.1 points from
-  school to school around the truth, and 1 interval in 20 is expected to miss it; the demo school is such a miss
-  (+1.0 per-protocol against a planted 4). In a real school, add selection on things the risk score does not see,
-  which no matching removes: the report is a reason to look closer, not a verdict on a type of intervention.
+- **Intervention outcomes are one draw.** In a school of this size the estimate moves by about 1 point from school
+  to school around the truth, and 1 interval in 20 is expected to miss it (the demo school did in the run before
+  the school calendar). In a real school, add selection on things the risk score does not see, which no matching
+  removes: the report is a reason to look closer, not a verdict on a type of intervention.
+- **Attendance completeness in the demo** is 100%: the generator records every school day, so the completeness
+  note of Early Warning is shown only by the tests. A real school's first terms will show it.
 - **External exams in the class-average check.** An external exam is compared only with earlier external exams of
   the same type in the same Form. A school usually sits one or two of a kind a year, so it takes several years
   before there are 4 to compare with; until then the class-average check is skipped for them (the other checks
   still run). The type is chosen from the **External Exam Type** list (District Exam, Regional Exam and Mock to
   start with; the Headmaster can add more, and spellings that differ only in case or spaces are refused), so the
   history of a kind is not split by typing.
-- **Marks alerts** were tuned on synthetic data. The student-change check raised 13 alerts over three years of a
-  300-student school, and at z 4.5 it misses swapped marks in a class whose marks vary a lot: in this run it missed
-  all 4 swapped marks (z 3.0 to 3.6). A lower threshold would catch them at the cost of more alerts on genuine
-  changes; the threshold is a setting (*Student Change: z Above*) left at 4.5.
+- **Marks alerts** were tuned on synthetic data. The student-change check raised 12 alerts over three years of a
+  300-student school, and at z 4.5 it misses swapped marks: in the last two runs it missed all 4 (z 3.0 to 3.6, then
+  −2.6 to −4.2), even with an ordinary spread. A lower threshold would catch them at the cost of more alerts on
+  genuine changes; the threshold is a setting (*Student Change: z Above*) left at 4.5 by decision.
 
 ## Demo accounts (site `jonbale`)
 

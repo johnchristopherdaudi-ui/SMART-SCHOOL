@@ -62,7 +62,11 @@
   "sms_fee_days_before_term",
   "sms_reminders_column_break",
   "sms_fee_reminder_overdue",
-  "sms_fee_overdue_days"
+  "sms_fee_overdue_days",
+  "calendar_section",
+  "saturday_is_school_day",
+  "calendar_column_break",
+  "attendance_completeness_min"
  ],
  "fields": [
   {
@@ -448,13 +452,36 @@
    "label": "Days After the Term Starts",
    "non_negative": 1,
    "description": "Once per student and term, for 14 days after this day"
+  },
+  {
+   "fieldname": "calendar_section",
+   "fieldtype": "Section Break",
+   "label": "School Calendar and Attendance"
+  },
+  {
+   "fieldname": "saturday_is_school_day",
+   "fieldtype": "Check",
+   "label": "Saturday Is a School Day",
+   "default": "0",
+   "description": "Monday to Friday otherwise; a School Event can still make one day a school day or a holiday"
+  },
+  {
+   "fieldname": "calendar_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "attendance_completeness_min",
+   "fieldtype": "Percent",
+   "label": "Attendance Completeness Warning Below",
+   "default": "80",
+   "description": "Early Warning notes a class whose attendance was taken on fewer of its school days"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-30 10:00:00.000000",
+ "modified": "2026-10-01 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
  "name": "Smart School Settings",

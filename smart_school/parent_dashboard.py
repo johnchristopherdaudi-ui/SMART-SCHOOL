@@ -9,6 +9,7 @@ from frappe.utils import add_days, flt, nowdate
 from smart_school.fees import get_fee_statement
 from smart_school.portal_utils import get_announcements
 from smart_school.results import get_grade, get_portal_results, get_subject_scores
+from smart_school.school_calendar import attendance_records, count_attendance
 from smart_school.tasks import get_current_term
 
 ATTENDANCE_ALERT_BELOW = 90  # % of recorded days attended
@@ -52,23 +53,18 @@ def get_dashboard(student):
 					)
 				)
 
-	# Attendance and discipline of the current term
+	# Attendance (on school days) and discipline of the current term
 	term = get_current_term()
-	statuses = (
-		frappe.get_all("Attendance", filters={"student": student.name, "term": term.name}, pluck="status")
-		if term
-		else []
-	)
-	attended = statuses.count("Present") + statuses.count("Late")
+	counts = count_attendance(attendance_records({"student": student.name, "term": term.name}) if term else [])
 	data.attendance = frappe._dict(
 		term_name=frappe.get_cached_value("Term", term.name, "term_name") if term else None,
-		days=len(statuses),
-		absent=statuses.count("Absent"),
-		rate=flt(attended / len(statuses) * 100, 1) if statuses else None,
+		days=counts.days,
+		absent=counts.absent,
+		rate=flt(counts.attended_rate, 1) if counts.attended_rate is not None else None,
 	)
 	if (
 		data.attendance.rate is not None
-		and len(statuses) >= MIN_DAYS_FOR_ATTENDANCE_ALERT
+		and counts.days >= MIN_DAYS_FOR_ATTENDANCE_ALERT
 		and data.attendance.rate < ATTENDANCE_ALERT_BELOW
 	):
 		data.alerts.append(

@@ -37,7 +37,7 @@ class TestReportCard(SchoolTestCase):
 				"doctype": "Attendance",
 				"student": cls.s["a"],
 				"status": "Absent",
-				"date": frappe.db.get_value("Term", "_Test T2", "start_date"),
+				"date": first_school_day("_Test T2"),  # attendance counts on school days only
 			}
 		).insert(ignore_permissions=True)
 		cls.result = frappe.db.get_value(
@@ -90,3 +90,10 @@ class TestReportCard(SchoolTestCase):
 			self.assertRaises(frappe.PermissionError, call, DOWNLOAD, student=self.s["a"], term="_Test T2")
 			self.assertNotIn("term=_Test+T2", render("parent-portal/results", student=self.s["a"])[1])
 		frappe.db.set_value("Exam", self.final, "results_published", 1)
+
+
+def first_school_day(term):
+	from smart_school.school_calendar import SchoolCalendar
+
+	start, end = frappe.db.get_value("Term", term, ["start_date", "end_date"])
+	return SchoolCalendar().school_days(start, end)[0]

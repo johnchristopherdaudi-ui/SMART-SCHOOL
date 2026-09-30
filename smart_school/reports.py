@@ -1,7 +1,7 @@
 """Shared helpers for the Script Reports, number cards and dashboard charts."""
 
 import frappe
-from frappe.utils import flt, today
+from frappe.utils import flt, getdate, today
 
 from smart_school.fees import get_fee_statement
 from smart_school.tasks import get_current_term
@@ -163,17 +163,39 @@ def get_fee_collection_by_term():
 
 
 def get_absence_rate_by_class():
+	"""Absence rate on school days (Absent fully, Late half, Excused not at all, like the risk score)."""
+	from smart_school.school_calendar import SchoolCalendar, attendance_records, count_attendance
+
 	term = get_current_term_name()
+	calendar = SchoolCalendar()
 	labels, values = [], []
 	for class_name in get_allowed_classes():
-		statuses = frappe.get_all("Attendance", filters={"term": term, "class": class_name}, pluck="status")
+		counts = count_attendance(attendance_records({"term": term, "class": class_name}), calendar)
 		labels.append(class_name)
-		values.append(flt(absence_rate(statuses), 1))
+		values.append(flt(counts.absence_rate, 1))
 	return {"labels": labels, "datasets": [{"name": f"Absence rate % ({term})", "values": values}]}
 
 
-def absence_rate(statuses):
-	"""Absent counts fully, Late half, Excused not at all (same rule as the risk score)."""
-	if not statuses:
-		return 0
-	return (statuses.count("Absent") + 0.5 * statuses.count("Late")) / len(statuses) * 100
+@frappe.whitelist()
+def get_attendance_completeness(filters=None):
+	"""Number card: of the current term's school days so far, the share with attendance taken, over all classes
+	(each class's school days counted)."""
+	from smart_school.school_calendar import SchoolCalendar
+
+	frappe.only_for(("Headmaster", "System Manager"))
+	term = get_current_term_name()
+	calendar = SchoolCalendar()
+	school_days = recorded = 0
+	for class_name in frappe.get_all("Class", pluck="name"):
+		days = set(calendar.term_school_days(term, class_name)) if term else set()
+		if not days:
+			continue
+		taken = {
+			getdate(d)
+			for d in frappe.get_all(
+				"Attendance", filters={"term": term, "class": class_name}, pluck="date", distinct=True
+			)
+		}
+		school_days += len(days)
+		recorded += len(taken & days)
+	return {"value": flt(recorded / school_days * 100, 1) if school_days else 0, "fieldtype": "Percent"}

@@ -196,6 +196,18 @@ class TestSMSOutbox(SMSTestCase):
 		self.assertEqual(self.outbox(name=rows[0].name)[0].status, sms.SENT)
 		self.assertEqual(provider.sent[-1][0], "255754000101")
 
+		# A title with < or > is stored escaped by Frappe but sent as written
+		frappe.db.set_single_value("Smart School Settings", "sms_school_name", "Shule <A&B>")
+		frappe.clear_document_cache("Smart School Settings", "Smart School Settings")
+		_, rows = self.receipt()
+		self.assertIn("&lt;", self.outbox(name=rows[0].name)[0].message)
+		plain = FakeProvider()
+		with patch("smart_school.sms.get_provider", return_value=plain):
+			sms.send_due(TEN_AM)
+		self.assertTrue(plain.sent[-1][1].startswith("Shule <A&B>: Tumepokea"), plain.sent[-1][1])
+		frappe.db.set_single_value("Smart School Settings", "sms_school_name", "Mwanga SS")
+		frappe.clear_document_cache("Smart School Settings", "Smart School Settings")
+
 		_, rows = self.receipt()
 		refused = FakeProvider(SendResult(False, error="Gateway answered 400: bad sender"))
 		with patch("smart_school.sms.get_provider", return_value=refused):

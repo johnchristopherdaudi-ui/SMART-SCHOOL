@@ -54,6 +54,15 @@ EXTERNAL_EXAMS = {
 	(2, 4): ("Mock", 42, 70, 30, -4),
 }
 PUBLISH_AFTER_DAYS = 7
+MAIN_EXAM_SCHOOL_DAYS = 5  # the main exam's papers take a week
+# The school calendar, as the Headmaster would enter it (the fixed national holidays come with the app). Holidays
+# that move, on the dates announced for Tanzania (Eid dates depend on the moon: approximate here).
+MOVING_HOLIDAYS = {
+	2024: (("Ijumaa Kuu", 3, 29), ("Jumatatu ya Pasaka", 4, 1), ("Idd el Fitr", 4, 10), ("Idd el Hajj", 6, 17), ("Maulid", 9, 16)),
+	2025: (("Idd el Fitr", 3, 31), ("Ijumaa Kuu", 4, 18), ("Jumatatu ya Pasaka", 4, 21), ("Idd el Hajj", 6, 6), ("Maulid", 9, 5)),
+	2026: (("Idd el Fitr", 3, 20), ("Ijumaa Kuu", 4, 3), ("Jumatatu ya Pasaka", 4, 6), ("Idd el Hajj", 5, 27), ("Maulid", 8, 26)),
+}
+UPCOMING_MEETING_DAYS = 11  # a Form 4 parents' meeting this many days after as_of, with an SMS reminder
 # Interventions (2nd and 3rd year): chosen at the start of a term from the term before, more often the more at risk
 # the student looks (deliberate selection bias). A Completed one adds INTERVENTION_EFFECT points to every mark of the
 # term (planted, to check the Intervention Outcomes report); a Cancelled one adds nothing.
@@ -161,13 +170,46 @@ def poisson(rng, lam):
 		k += 1
 
 
-def school_days(start, end, as_of):
+def school_days(start, end, as_of, off=frozenset()):
+	"""Monday to Friday, without holidays and breaks (the app's rule for a school without Saturday classes)."""
 	day, days = start, []
 	while day <= min(end, as_of):
-		if day.weekday() < 5:
+		if day.weekday() < 5 and day not in off:
 			days.append(day)
 		day += timedelta(days=1)
 	return days
+
+
+def next_school_day(day, off):
+	while day.weekday() >= 5 or day in off:
+		day += timedelta(days=1)
+	return day
+
+
+def add_event(plan, title, kind, start, end=None, is_school_day=0, forms=None, description=None, **values):
+	plan.events.append(
+		{
+			"title": title,
+			"type": kind,
+			"start": start,
+			"end": end or start,
+			"is_school_day": is_school_day,
+			"forms": forms,
+			"description": description,
+			**values,
+		}
+	)
+
+
+def holidays(plan, year):
+	"""Days off in a year: the fixed national holidays (from the app) and the moving ones (entered as events)."""
+	from smart_school.school_calendar import FIXED_HOLIDAYS
+
+	off = {date(year, m, d) for _, m, d in FIXED_HOLIDAYS}
+	for title, m, d in MOVING_HOLIDAYS.get(year, ()):
+		add_event(plan, title, "Public Holiday", date(year, m, d), description="Sikukuu ya kitaifa: hakuna masomo.")
+		off.add(date(year, m, d))
+	return off
 
 
 def build_plan(seed=42, as_of=None, students_per_form=STUDENTS_PER_FORM):
@@ -188,6 +230,7 @@ def build_plan(seed=42, as_of=None, students_per_form=STUDENTS_PER_FORM):
 		enrolments={},  # (student, year) -> form
 		results={},  # (exam, student, subject) -> [marks, owner teacher]
 		interventions=[],
+		events=[],  # the school calendar (School Event), without the fixed holidays the app installs
 		without_intervention={},  # (exam, student, subject) -> (marks, marks the student would have had without it)
 		attendance=[],  # (student, date, status, term, form)
 		discipline=[],  # (student, date, incident, severity, action)
@@ -217,8 +260,10 @@ def build_plan(seed=42, as_of=None, students_per_form=STUDENTS_PER_FORM):
 def make_calendar(plan):
 	index = 0
 	for year in plan.years:
+		off_year = holidays(plan, year)
 		for number, ((sm, sd), (em, ed)) in TERM_DATES.items():
 			start, end = date(year, sm, sd), date(year, em, ed)
+			off = off_year | term_events(plan, number, start, end, off_year)
 			term = {
 				"name": f"Term {number} {year}",
 				"number": number,
@@ -226,7 +271,8 @@ def make_calendar(plan):
 				"start": start,
 				"end": end,
 				"index": index,
-				"days": school_days(start, end, plan.as_of),
+				"days": school_days(start, end, plan.as_of, off),
+				"off": off,
 			}
 			index += 1
 			if start > plan.as_of:
@@ -240,12 +286,50 @@ def make_calendar(plan):
 				main_weight = None
 				if external:  # set before the main exam, as it is sat first
 					name, after_start, main_weight, weight, shift = external
-					add_exam(plan, term, form, name, "external", start + timedelta(days=after_start), weight, shift)
-				main_day = end - timedelta(days=MAIN_EXAM_DAYS_BEFORE_END)
-				add_exam(plan, term, form, MAIN_EXAMS[number], "main", main_day, main_weight, 0)
+					day = next_school_day(start + timedelta(days=after_start), off)
+					add_exam(plan, term, form, name, "external", day, weight, shift, last_day=day)
+				main_day = next_school_day(end - timedelta(days=MAIN_EXAM_DAYS_BEFORE_END), off)
+				papers = school_days(main_day, end, end, off)[:MAIN_EXAM_SCHOOL_DAYS]
+				add_exam(plan, term, form, MAIN_EXAMS[number], "main", main_day, main_weight, 0, last_day=papers[-1])
 
 
-def add_exam(plan, term, form, exam_name, kind, day, weight, shift):
+def term_events(plan, number, start, end, off):
+	"""A term's events: a week's midterm break (no school), and school-day events: a parents' meeting (terms 1
+	and 3), sports day (term 2), Form 4 graduation (term 3). Returns the break's days."""
+	middle = start + (end - start) / 2
+	break_start = middle - timedelta(days=middle.weekday())
+	break_days = {break_start + timedelta(days=i) for i in range(5)}
+	add_event(
+		plan, "Mapumziko ya katikati ya muhula", "Midterm Break", break_start, break_start + timedelta(days=4),
+		description="Wanafunzi wako nyumbani wiki hii; masomo yanaendelea Jumatatu inayofuata.",
+	)
+	friday = lambda day: next_school_day(day + timedelta(days=(4 - day.weekday()) % 7), off | break_days)
+	if number in (1, 3):
+		add_event(
+			plan, "Mkutano wa wazazi na walimu", "Parents Meeting", friday(start + timedelta(days=14)), is_school_day=1,
+			description="Saa 8 mchana, ukumbi wa shule. Wazazi wote mnakaribishwa.",
+		)
+	if number == 2:
+		add_event(
+			plan, "Siku ya michezo", "Sports Day", friday(break_start + timedelta(days=21)), is_school_day=1,
+			description="Michezo ya mabweni yote uwanjani; wazazi mnakaribishwa.",
+		)
+	if number == 3:
+		add_event(
+			plan, "Mahafali ya Kidato cha Nne", "Graduation", friday(end - timedelta(days=21)), is_school_day=1,
+			forms=[4], description="Sherehe ya kuwaaga wanafunzi wa Kidato cha Nne.",
+		)
+		meeting = plan.as_of + timedelta(days=UPCOMING_MEETING_DAYS)
+		if start <= meeting <= end and plan.as_of.year == start.year:
+			add_event(
+				plan, "Mkutano wa wazazi wa Kidato cha Nne", "Parents Meeting", friday(meeting), is_school_day=1,
+				forms=[4], sms_reminder=1, sms_days_before=3,
+				description="Maandalizi ya mtihani wa taifa (CSEE). Saa 4 asubuhi, ukumbi wa shule.",
+			)
+	return break_days
+
+
+def add_exam(plan, term, form, exam_name, kind, day, weight, shift, last_day=None):
 	published = day + timedelta(days=PUBLISH_AFTER_DAYS)
 	plan.exams.append(
 		{
@@ -259,6 +343,7 @@ def add_exam(plan, term, form, exam_name, kind, day, weight, shift):
 			"weight": weight,
 			"shift": shift,
 			"date": day,
+			"last_day": last_day or day,
 			"sat": day <= plan.as_of,
 			"published_on": published if published <= plan.as_of else None,
 		}
@@ -817,6 +902,7 @@ def write_plan(plan, fees=True):
 	ctx = frappe._dict(plan=plan, names=random.Random(f"{plan.seed}-names"))
 	try:
 		write_school(ctx)
+		write_calendar(ctx)
 		write_people(ctx)
 		write_exams(ctx)
 		write_attendance_and_discipline(ctx)
@@ -992,6 +1078,29 @@ def load_grades():
 	return lambda score: next(r.grade for r in rows if r.minimum_mark <= score <= r.maximum_mark)
 
 
+def write_calendar(ctx):
+	"""The plan's School Events (the fixed national holidays are already there: the app installs them)."""
+	plan = ctx.plan
+	log(f"{len(plan.events)} school calendar events")
+	for e in plan.events:
+		insert(
+			{
+				"doctype": "School Event",
+				"title": e["title"],
+				"event_type": e["type"],
+				"start_date": e["start"],
+				"end_date": e["end"],
+				"is_school_day": e["is_school_day"],
+				"audience": "Specific Classes" if e["forms"] else "All School",
+				"classes": [{"class": class_name(f)} for f in e["forms"] or []],
+				"show_on_portal": 1,
+				"description": e["description"],
+				"sms_reminder": e.get("sms_reminder", 0),
+				"sms_days_before": e.get("sms_days_before", 2),
+			}
+		)
+
+
 def write_exams(ctx):
 	from smart_school.results import recompute_student_term_result, round_half_up
 	from smart_school.tasks import ensure_academic_record
@@ -1016,6 +1125,8 @@ def write_exams(ctx):
 				"weight": e["weight"],
 				"is_external": e["kind"] == "external",
 				"external_exam_type": e["exam_name"] if e["kind"] == "external" else None,
+				"start_date": e["date"],
+				"end_date": e["last_day"],
 			}
 		)
 		ctx.exam_names[e["key"]] = doc.name
@@ -1267,6 +1378,22 @@ def intervention_summary(plan):
 	}
 
 
+def calendar_summary(plan):
+	"""The calendar events the demo added, and the school days of each started term (holidays and breaks out)."""
+	kinds = {}
+	for e in plan.events:
+		kinds[e["type"]] = kinds.get(e["type"], 0) + 1
+	return {
+		"events": dict(sorted(kinds.items())),
+		"school_days": {t["name"]: len(t["days"]) for t in plan.terms if t["days"]},
+		"weekdays_off": {
+			t["name"]: sum(1 for d in t["off"] if d.weekday() < 5 and t["start"] <= d <= min(t["end"], plan.as_of))
+			for t in plan.terms
+			if t["days"]
+		},
+	}
+
+
 def realized_effect(plan, intervention):
 	"""The intervention term's average with the planted effect minus the same average without it."""
 	exams = {e["key"]: e for e in plan.exams if e["term"] == intervention["term"]}
@@ -1368,4 +1495,5 @@ def make_manifest(ctx):
 		"class_teachers": class_teachers,
 		"demo_parent": get_demo_parent(ctx),
 		"interventions": intervention_summary(plan),
+		"calendar": calendar_summary(plan),
 	}

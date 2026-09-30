@@ -51,7 +51,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-24 14:30:00.000000",
+ "modified": "2026-10-01 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
  "name": "Attendance",
@@ -76,7 +76,10 @@
    "read": 1,
    "report": 1,
    "role": "Headmaster",
-   "share": 1
+   "share": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
   },
   {
    "create": 1,

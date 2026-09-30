@@ -31,3 +31,5 @@ smart_school.patches.set_model_level_thresholds
 smart_school.patches.create_external_exam_types
 smart_school.patches.set_intervention_defaults
 smart_school.patches.set_sms_defaults
+smart_school.patches.create_fixed_holidays
+smart_school.patches.set_sms_defaults #event_reminder

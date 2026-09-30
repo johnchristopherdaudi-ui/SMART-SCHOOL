@@ -12,6 +12,7 @@ def after_install():
 	# Provisional O-level tables (D3) with grade remarks, the risk score defaults and the external exam types
 	from smart_school.patches import (
 		create_external_exam_types,
+		create_fixed_holidays,
 		seed_grading_tables,
 		set_grade_remarks,
 		set_risk_score_defaults,
@@ -23,6 +24,7 @@ def after_install():
 	set_risk_score_defaults.execute()
 	create_external_exam_types.execute()  # District Exam, Regional Exam, Mock
 	set_sms_defaults.execute()  # SMS Off, price and limits, the Swahili templates
+	create_fixed_holidays.execute()  # national holidays on fixed dates, every year
 
 	frappe.db.add_unique("Student Term Result", ["student", "term"], constraint_name="unique_student_term")
 	frappe.db.commit()

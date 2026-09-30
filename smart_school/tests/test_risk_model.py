@@ -7,6 +7,8 @@ from unittest.mock import patch
 
 import frappe
 
+from smart_school.school_calendar import SchoolCalendar
+
 from smart_school import demo_data, risk_model
 from smart_school.results import get_subject_scores
 from smart_school.tasks import SEVERITY_POINTS
@@ -47,7 +49,15 @@ class TestRiskModel(SchoolTestCase):
 		row = next(r for r in self.rows if not r.features["no_previous_term"] and r.features["absence_rate"])
 		student, term = row.student, row.term
 
-		statuses = frappe.get_all("Attendance", filters={"student": student, "term": term.name}, pluck="status")
+		# school days only (version 5): records on holidays and breaks are left out
+		calendar = SchoolCalendar()
+		statuses = [
+			r.status
+			for r in frappe.get_all(
+				"Attendance", filters={"student": student, "term": term.name}, fields=["status", "date", "class"]
+			)
+			if calendar.is_school_day(r.date, r["class"])
+		]
 		absence = (statuses.count("Absent") + 0.5 * statuses.count("Late")) / len(statuses)
 		severities = frappe.get_all(
 			"Discipline Record",

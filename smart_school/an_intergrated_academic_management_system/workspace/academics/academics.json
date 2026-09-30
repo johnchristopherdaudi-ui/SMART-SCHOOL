@@ -25,7 +25,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 8,
+   "link_count": 9,
    "onboard": 0,
    "type": "Card Break"
   },
@@ -77,6 +77,17 @@
    "dependencies": "",
    "hidden": 0,
    "is_query_report": 0,
+   "label": "School Calendar",
+   "link_count": 0,
+   "link_to": "School Event",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "At-Risk Students",
    "link_count": 0,
    "link_to": "At-Risk Students",
@@ -121,7 +132,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Records",
-   "link_count": 4,
+   "link_count": 5,
    "onboard": 0,
    "type": "Card Break"
   },
@@ -162,6 +173,17 @@
    "dependencies": "",
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Class Attendance",
+   "link_count": 0,
+   "link_to": "class-attendance",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Discipline Record",
    "link_count": 0,
    "link_to": "Discipline Record",
@@ -170,7 +192,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-09-29 10:00:00.000000",
+ "modified": "2026-10-01 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
  "name": "Academics",

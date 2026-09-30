@@ -174,6 +174,23 @@ class TestDemoInterventions(FrappeTestCase):
 		self.assertTrue({i["status"] for i in current} <= {"Planned", "In Progress"})
 
 
+class TestDemoCalendar(FrappeTestCase):
+	def test_no_attendance_on_days_without_school_and_exams_have_dates(self):
+		plan = dd.build_plan(seed=42, as_of=AS_OF, students_per_form=10)
+		off = set().union(*(t["off"] for t in plan.terms))
+		days = {day for _, day, _, _, _ in plan.attendance}
+		self.assertTrue(days)
+		self.assertFalse(days & off)
+		self.assertTrue(all(day.weekday() < 5 for day in days))
+		kinds = {e["type"] for e in plan.events}
+		self.assertTrue({"Midterm Break", "Parents Meeting", "Sports Day", "Graduation"} <= kinds)
+		terms = {t["name"]: t for t in plan.terms}
+		for e in plan.exams:
+			term = terms[e["term"]]
+			self.assertTrue(term["start"] <= e["date"] <= e["last_day"] <= term["end"], e["key"])
+			self.assertNotIn(e["date"], off)
+
+
 class TestDemoGuard(SchoolTestCase):
 	def assert_refused(self, site, conf=None):
 		with patch.object(frappe.local, "site", site), patch.dict(frappe.conf, conf or {}):

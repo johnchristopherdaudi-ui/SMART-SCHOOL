@@ -1,0 +1,204 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "SE-.YYYY.-.#####",
+ "creation": "2026-10-01 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "event_type",
+  "start_date",
+  "end_date",
+  "column_break_dates",
+  "is_school_day",
+  "repeat_every_year",
+  "show_on_portal",
+  "audience_section",
+  "audience",
+  "classes",
+  "description_section",
+  "description",
+  "sms_section",
+  "sms_reminder",
+  "sms_days_before",
+  "column_break_sms",
+  "sms_sent_on",
+  "color"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Shown to parents on the portal: write it in Swahili"
+  },
+  {
+   "fieldname": "event_type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Term Opening\nTerm Closing\nMidterm Break\nPublic Holiday\nExam Period\nParents Meeting\nSports Day\nGraduation\nOther",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date",
+   "description": "Empty: one day"
+  },
+  {
+   "fieldname": "column_break_dates",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "is_school_day",
+   "fieldtype": "Check",
+   "label": "Is School Day",
+   "default": "0",
+   "description": "Off: no school on these days (holiday, break); they are left out of attendance. On: an ordinary school day, and a weekend day becomes one"
+  },
+  {
+   "fieldname": "repeat_every_year",
+   "fieldtype": "Check",
+   "label": "Repeats Every Year",
+   "default": "0",
+   "description": "Same day and month every year (fixed holidays)"
+  },
+  {
+   "fieldname": "show_on_portal",
+   "fieldtype": "Check",
+   "label": "Show on Parent Portal",
+   "default": "1"
+  },
+  {
+   "fieldname": "audience_section",
+   "fieldtype": "Section Break",
+   "label": "For"
+  },
+  {
+   "fieldname": "audience",
+   "fieldtype": "Select",
+   "label": "Audience",
+   "options": "All School\nSpecific Classes",
+   "default": "All School",
+   "reqd": 1
+  },
+  {
+   "fieldname": "classes",
+   "fieldtype": "Table MultiSelect",
+   "label": "Classes",
+   "options": "School Event Class",
+   "depends_on": "eval:doc.audience=='Specific Classes'",
+   "mandatory_depends_on": "eval:doc.audience=='Specific Classes'"
+  },
+  {
+   "fieldname": "description_section",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description",
+   "description": "Shown to parents on the portal: write it in Swahili"
+  },
+  {
+   "fieldname": "sms_section",
+   "fieldtype": "Section Break",
+   "label": "SMS Reminder"
+  },
+  {
+   "fieldname": "sms_reminder",
+   "fieldtype": "Check",
+   "label": "Remind Parents by SMS",
+   "default": "0",
+   "description": "Through the SMS system (consent, limits, quiet hours), to the guardians of the event's classes"
+  },
+  {
+   "fieldname": "sms_days_before",
+   "fieldtype": "Int",
+   "label": "Days Before",
+   "default": "2",
+   "depends_on": "sms_reminder",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "column_break_sms",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sms_sent_on",
+   "fieldtype": "Date",
+   "label": "SMS Written On",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "color",
+   "fieldtype": "Color",
+   "label": "Color",
+   "hidden": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-01 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
+ "name": "School Event",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Headmaster",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Teacher"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accountant"
+  }
+ ],
+ "sort_field": "start_date",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title",
+ "track_changes": 1
+}

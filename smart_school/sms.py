@@ -12,6 +12,7 @@ Test instead of sending it; Live sends through the provider (smart_school.sms_pr
 Early warnings, interventions, discipline and marks alerts are never sent by SMS: only the five message types
 below exist, each tied to one kind of record."""
 
+import html
 import math
 import re
 from datetime import datetime, timedelta
@@ -42,7 +43,8 @@ RECEIPT = "Payment Received"
 FEE_BEFORE_TERM = "Fee Reminder"
 FEE_OVERDUE = "Fee Overdue"
 ANNOUNCEMENT = "Announcement"
-MESSAGE_TYPES = (RESULTS, RECEIPT, FEE_BEFORE_TERM, FEE_OVERDUE, ANNOUNCEMENT)
+EVENT_REMINDER = "Event Reminder"
+MESSAGE_TYPES = (RESULTS, RECEIPT, FEE_BEFORE_TERM, FEE_OVERDUE, ANNOUNCEMENT, EVENT_REMINDER)
 FEE_TYPES = (RECEIPT, FEE_BEFORE_TERM, FEE_OVERDUE)
 REFERENCE_DOCTYPE = {
 	RESULTS: "Exam",
@@ -50,6 +52,7 @@ REFERENCE_DOCTYPE = {
 	FEE_BEFORE_TERM: "Term",
 	FEE_OVERDUE: "Term",
 	ANNOUNCEMENT: "Announcement",
+	EVENT_REMINDER: "School Event",
 }
 # Records that stay inside the school: refused even if someone tries to queue them
 FORBIDDEN_DOCTYPES = (
@@ -82,7 +85,14 @@ REMINDER_WINDOW_DAYS = 14  # an overdue reminder is due for 14 days, so switchin
 BATCH_SIZE = 500
 
 # Short portal links keep a message in one SMS (hooks.website_redirects)
-LINKS = {RESULTS: "/matokeo", RECEIPT: "/ada", FEE_BEFORE_TERM: "/ada", FEE_OVERDUE: "/ada", ANNOUNCEMENT: "/matangazo"}
+LINKS = {
+	RESULTS: "/matokeo",
+	RECEIPT: "/ada",
+	FEE_BEFORE_TERM: "/ada",
+	FEE_OVERDUE: "/ada",
+	ANNOUNCEMENT: "/matangazo",
+	EVENT_REMINDER: "/kalenda",
+}
 
 PLACEHOLDERS = {
 	RESULTS: ("shule", "mwanafunzi", "mtihani", "muhula", "wastani", "division", "kiungo"),
@@ -90,6 +100,7 @@ PLACEHOLDERS = {
 	FEE_BEFORE_TERM: ("shule", "mwanafunzi", "muhula", "tarehe", "kiasi", "deni", "kiungo"),
 	FEE_OVERDUE: ("shule", "mwanafunzi", "muhula", "salio", "siku", "kiungo"),
 	ANNOUNCEMENT: ("shule", "kichwa", "kiungo"),
+	EVENT_REMINDER: ("shule", "tukio", "tarehe", "kiungo"),
 }
 PLACEHOLDER_HELP = {
 	"shule": "school name for SMS (Settings)",
@@ -102,10 +113,11 @@ PLACEHOLDER_HELP = {
 	"kiasi": "amount in TZS, e.g. 250,000",
 	"risiti": "receipt number",
 	"salio": "balance still owed, TZS",
-	"tarehe": "date the term starts",
+	"tarehe": "the date: when the term starts, or the event's day(s)",
 	"deni": "'; deni la nyuma TZS 150,000' when there is earlier debt, else nothing",
 	"siku": "days since the term started",
 	"kichwa": "announcement title (shortened to fit one SMS)",
+	"tukio": "the event's title (shortened to fit one SMS)",
 }
 DEFAULT_TEMPLATES = {
 	RESULTS: "{shule}: {mwanafunzi} - {mtihani}: wastani {wastani}%{division}. Zaidi: {kiungo}",
@@ -113,6 +125,7 @@ DEFAULT_TEMPLATES = {
 	FEE_BEFORE_TERM: "{shule}: {muhula} inaanza {tarehe}. Ada ya {mwanafunzi}: TZS {kiasi}{deni}. Lipa: {kiungo}",
 	FEE_OVERDUE: "{shule}: {mwanafunzi} ana deni la ada TZS {salio} ({muhula}, siku {siku}). Tafadhali lipa: {kiungo}",
 	ANNOUNCEMENT: "{shule}: Tangazo - {kichwa}. Soma zaidi: {kiungo}",
+	EVENT_REMINDER: "{shule}: Kumbusho - {tukio}, {tarehe}. Kalenda ya shule: {kiungo}",
 }
 # Long but real values: the template editor shows the message with these (after shortening, like a real one)
 LONG_VALUES = {
@@ -128,6 +141,7 @@ LONG_VALUES = {
 	"deni": "; deni la nyuma TZS 1,500,000",
 	"siku": "120",
 	"kichwa": "Mkutano wa wazazi na walimu wa Kidato cha Nne kuhusu maandalizi ya mtihani wa taifa",
+	"tukio": "Mkutano wa wazazi na walimu wa Kidato cha Nne kuhusu maandalizi ya mtihani wa taifa",
 }
 
 PLACEHOLDER = re.compile(r"\{(\w+)\}")
@@ -219,11 +233,12 @@ def compose(message_type, values, template=None):
 			text = render(template, {**values, "mwanafunzi": name})
 			if measure(text)[1] == 1:
 				return text
-	if values.get("kichwa"):
-		title = values["kichwa"]
-		room = 160 - measure(render(template, {**values, "kichwa": ""}))[0]
-		if 3 < room < len(title):
-			text = render(template, {**values, "kichwa": title[: room - 3].rstrip() + "..."})
+	for key in ("kichwa", "tukio"):  # an announcement's or event's title is cut with '...'
+		if values.get(key):
+			title = values[key]
+			room = 160 - measure(render(template, {**values, key: ""}))[0]
+			if 3 < room < len(title):
+				text = render(template, {**values, key: title[: room - 3].rstrip() + "..."})
 	return text
 
 
@@ -530,7 +545,8 @@ def send_one(row, settings, provider, moment):
 		set_status(row.name, TESTED, sent_on=moment, provider="Test mode (not sent)")
 		return True
 	attempts = cint(row.attempts) + 1
-	result = provider.send(row.phone, row.message)
+	# Frappe escapes < and > (and & with them) when it stores the text; the phone gets the text as written
+	result = provider.send(row.phone, html.unescape(row.message))
 	if result.ok:
 		set_status(
 			row.name, SENT, sent_on=moment, attempts=attempts, provider=provider.name, provider_message_id=result.message_id
@@ -910,3 +926,59 @@ def has_permission(doc, ptype=None, user=None):
 	if set(FEE_ROLES) & set(roles):
 		return doc.get("message_type") in FEE_TYPES
 	return False
+
+
+# ---------- school events ----------
+
+
+def event_recipients(audience, classes=None):
+	"""One message per guardian of the active students the event is for."""
+	filters = {"status": "Active"}
+	if audience == "Specific Classes":
+		filters["current_class"] = ["in", list(classes or []) or [""]]
+	students = frappe.get_all("Student", filters=filters, pluck="name")
+	seen, guardians = set(), []
+	for _, rows in sorted(guardians_by_student(students).items()):
+		for guardian in rows:
+			if guardian.name not in seen:
+				seen.add(guardian.name)
+				guardians.append(guardian)
+	return guardians
+
+
+def event_date_text(start, end):
+	start, end = getdate(start), getdate(end or start)
+	if start == end:
+		return formatdate(start, "dd-mm-yyyy")
+	return f"{formatdate(start, 'dd-mm-yyyy')} hadi {formatdate(end, 'dd-mm-yyyy')}"
+
+
+@frappe.whitelist()
+def preview_event_reminder(event=None, audience="All School", classes=None):
+	"""For the switch on a School Event: who the reminder reaches and what it costs (the form may be unsaved)."""
+	frappe.only_for(MANAGER_ROLES)
+	classes = frappe.parse_json(classes) if isinstance(classes, str) else classes
+	values = {"tukio": "", "tarehe": ""}
+	if event:
+		doc = frappe.get_doc("School Event", event)
+		values = {"tukio": doc.title, "tarehe": event_date_text(doc.start_date, doc.end_date)}
+	return preview(EVENT_REMINDER, event or "", [(g, values, None) for g in event_recipients(audience, classes)])
+
+
+def send_event_reminders(on_date=None):
+	"""Daily: reminders of events whose day is coming (from "Days Before" until the day before), once per guardian."""
+	on_date = getdate(on_date or today())
+	if get_settings().mode == OFF:
+		return
+	for name in frappe.get_all(
+		"School Event", filters={"sms_reminder": 1, "repeat_every_year": 0, "start_date": [">", on_date]}, pluck="name"
+	):
+		doc = frappe.get_doc("School Event", name)
+		if add_days(doc.start_date, -cint(doc.sms_days_before)) > on_date:
+			continue
+		values = {"tukio": doc.title, "tarehe": event_date_text(doc.start_date, doc.end_date)}
+		classes = [c.get("class") for c in doc.classes]
+		recipients = [(g, values, None) for g in event_recipients(doc.audience, classes)]
+		queue_messages(EVENT_REMINDER, doc.name, recipients, batch=f"Event {doc.name}")
+		if not doc.sms_sent_on:
+			doc.db_set("sms_sent_on", on_date)
