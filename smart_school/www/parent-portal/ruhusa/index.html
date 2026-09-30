@@ -1,0 +1,125 @@
+{% extends "smart_school/templates/parent_portal/base.html" %}
+
+{% block portal_style %}
+<style>
+.sp-container { max-width: 760px; margin: 0 auto; padding: 35px 20px; }
+.sp-welcome { font-size: 24px; font-weight: 700; color: var(--sp-text); margin-bottom: 8px; }
+.sp-sub { color: #777; font-size: 14px; margin-bottom: 20px; }
+.sp-section-title { font-size: 17px; font-weight: 700; color: var(--sp-text); margin: 26px 0 12px; }
+.sp-form, .sp-request { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); margin-bottom: 14px; }
+.sp-form label { display: block; font-weight: 600; font-size: 14px; margin: 12px 0 4px; }
+.sp-form input, .sp-form select, .sp-form textarea { width: 100%; padding: 10px; border: 1px solid #d0d7de; border-radius: 8px; font-size: 15px; }
+.sp-form .row2 { display: flex; gap: 10px; flex-wrap: wrap; }
+.sp-form .row2 > div { flex: 1 1 140px; }
+.sp-form .hint { font-size: 12px; color: #888; margin-top: 4px; }
+.sp-btn { background: var(--sp-primary); color: #fff; border: 0; border-radius: 8px; padding: 12px 18px; font-weight: 700; font-size: 15px; margin-top: 16px; width: 100%; }
+.sp-btn.light { background: #eef3f8; color: var(--sp-primary); width: auto; padding: 8px 14px; margin-top: 8px; font-size: 13px; }
+.sp-error { color: #c92a2a; font-size: 14px; margin-top: 10px; }
+.sp-request h4 { margin: 0 0 4px; font-size: 16px; }
+.sp-request .when { color: #666; font-size: 13px; }
+.sp-request .reason { color: #444; font-size: 14px; margin-top: 6px; }
+.sp-request .note { background: #f8f9fa; border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-top: 8px; }
+.sp-status { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 12px; }
+.sp-status.pending { background: #fff4e6; color: #d9480f; }
+.sp-status.approved { background: #ebfbee; color: #2b8a3e; }
+.sp-status.rejected { background: #fdecec; color: #c92a2a; }
+.sp-status.cancelled { background: #f1f3f5; color: #666; }
+.sp-empty { color: #888; padding: 22px; text-align: center; background: #fff; border-radius: 12px; }
+</style>
+{% endblock %}
+
+{% block portal_content %}
+<div class="sp-container">
+    <div class="sp-welcome">Ruhusa</div>
+    <div class="sp-sub">Omba ruhusa mtoto wako asihudhurie shule kwa siku fulani. Mwalimu wa darasa au Mkuu wa Shule ataamua.</div>
+
+    {% if children %}
+    <form class="sp-form" id="leaveForm" onsubmit="return false;">
+        <label for="student">Mwanafunzi</label>
+        <select id="student" required>
+            {% for c in children %}<option value="{{ c.name | e }}">{{ c.full_name | e }} ({{ (c.current_class or "") | e }})</option>{% endfor %}
+        </select>
+        <div class="row2">
+            <div><label for="fromDate">Kuanzia</label><input type="date" id="fromDate" min="{{ earliest | e }}" value="{{ today | e }}" required></div>
+            <div><label for="toDate">Hadi</label><input type="date" id="toDate" min="{{ earliest | e }}" value="{{ today | e }}" required></div>
+        </div>
+        <div class="hint">Unaweza kuomba hadi siku {{ days_back }} nyuma (k.m. ukiwa na cheti cha daktari).</div>
+        <label for="reason">Sababu fupi</label>
+        <textarea id="reason" rows="3" maxlength="{{ max_reason }}" placeholder="Mfano: Mgonjwa, ana homa" required></textarea>
+        <label for="attachment">Kiambatisho (si lazima)</label>
+        <input type="file" id="attachment" accept=".pdf,.jpg,.jpeg,.png">
+        <div class="hint">Cheti cha daktari au barua: PDF au picha, isiyozidi MB 5. Kinaonwa na Mkuu wa Shule na mwalimu wa darasa tu.</div>
+        <div class="sp-error" id="leaveError"></div>
+        <button type="submit" class="sp-btn" id="leaveSubmit">Tuma ombi</button>
+    </form>
+    {% else %}
+    <div class="sp-empty">Hakuna mwanafunzi anayesoma sasa aliyeunganishwa na akaunti hii.</div>
+    {% endif %}
+
+    <div class="sp-section-title">Maombi yako</div>
+    {% for r in requests %}
+    <div class="sp-request">
+        <h4>{{ r.student_name | e }} <span class="sp-status {{ r.status_css | e }}">{{ r.status_label | e }}</span></h4>
+        <div class="when">{{ r.when | e }}{% if r.school_days is not none %} &middot; siku {{ r.school_days }} za shule{% endif %}{% if r.has_attachment %} &middot; kina kiambatisho{% endif %}</div>
+        <div class="reason">{{ r.reason | e }}</div>
+        {% if r.decision_note %}<div class="note">Maoni ya shule: {{ r.decision_note | e }}</div>{% endif %}
+        {% if r.status == "Pending" %}
+        <button type="button" class="sp-btn light" data-cancel="{{ r.name | e }}">Futa ombi</button>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="sp-empty">Bado hujaomba ruhusa.</div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block portal_script %}
+<script>
+(function () {
+    var form = document.getElementById('leaveForm');
+    var error = document.getElementById('leaveError');
+    function send(fileName, fileData) {
+        frappe.call({
+            method: 'smart_school.leave.submit_request',
+            args: {
+                student: document.getElementById('student').value,
+                from_date: document.getElementById('fromDate').value,
+                to_date: document.getElementById('toDate').value,
+                reason: document.getElementById('reason').value,
+                file_name: fileName, file_data: fileData
+            },
+            freeze: true,
+            callback: function (r) { if (!r.exc) { window.location.reload(); } },
+            error: function () { document.getElementById('leaveSubmit').disabled = false; }
+        });
+    }
+    if (form) {
+        form.addEventListener('submit', function () {
+            error.textContent = '';
+            var fromDate = document.getElementById('fromDate').value, toDate = document.getElementById('toDate').value;
+            if (!fromDate || !toDate || !document.getElementById('reason').value.trim()) {
+                error.textContent = 'Jaza tarehe na sababu.'; return;
+            }
+            if (toDate < fromDate) { error.textContent = 'Tarehe ya mwisho iko kabla ya tarehe ya kuanza.'; return; }
+            var file = document.getElementById('attachment').files[0];
+            if (file && file.size > 5 * 1024 * 1024) { error.textContent = 'Kiambatisho kisizidi MB 5.'; return; }
+            document.getElementById('leaveSubmit').disabled = true;
+            if (!file) { send(null, null); return; }
+            var reader = new FileReader();
+            reader.onload = function () { send(file.name, reader.result); };
+            reader.readAsDataURL(file);
+        });
+    }
+    document.querySelectorAll('[data-cancel]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            if (!confirm('Futa ombi hili?')) return;
+            frappe.call({
+                method: 'smart_school.leave.cancel_request',
+                args: { name: btn.getAttribute('data-cancel') },
+                callback: function (r) { if (!r.exc) { window.location.reload(); } }
+            });
+        });
+    });
+})();
+</script>
+{% endblock %}

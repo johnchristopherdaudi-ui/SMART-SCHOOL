@@ -769,6 +769,7 @@ def generate(seed=42, as_of=None, students_per_form=STUDENTS_PER_FORM):
 	manifest = write_plan(plan)
 	frappe.db.commit()
 	manifest["sms"] = write_sms_demo(plan.seed, plan.as_of)
+	manifest["leave"] = write_leave_demo(plan.seed, plan.as_of)
 	frappe.db.commit()
 	save_manifest(manifest)
 	return manifest
@@ -804,6 +805,104 @@ def add_sms_demo():
 	frappe.db.commit()
 	save_manifest(manifest)
 	return manifest["sms"]
+
+
+LEAVE_REASONS = (
+	"Mgonjwa, ana homa na kikohozi",
+	"Msiba wa familia kijijini",
+	"Amelazwa hospitali, cheti cha daktari kitaletwa",
+	"Safari ya kifamilia ya dharura",
+	"Ana malaria, anapumzika nyumbani",
+	"Harusi ya kaka yake",
+	"Kliniki ya meno",
+)
+# (status, first day as days after as_of, school days long)
+LEAVE_PLAN = (
+	("Approved", -18, 2),
+	("Approved", -15, 1),
+	("Approved", -11, 3),
+	("Approved", -8, 2),
+	("Approved", -4, 1),
+	("Approved", -2, 2),
+	("Rejected", -13, 1),
+	("Rejected", -6, 2),
+	("Cancelled", -9, 1),
+	("Pending", 1, 2),
+	("Pending", 3, 1),
+	("Pending", 6, 3),
+)
+
+
+def add_leave_demo():
+	"""Leave requests on a demo made before them: bench --site demo.localhost execute smart_school.demo_data.add_leave_demo.
+	Their own random numbers, so the rest of the demo does not change (apart from the days they excuse)."""
+	assert_demo_name()
+	assert_nobody_messaged()
+	if frappe.db.count("Leave Request"):
+		frappe.throw("This demo already has leave requests")
+	with open(manifest_path()) as f:
+		manifest = json.load(f)
+	manifest["leave"] = write_leave_demo(manifest["seed"], getdate(manifest["as_of"]))
+	frappe.db.commit()
+	save_manifest(manifest)
+	return manifest["leave"]
+
+
+def write_leave_demo(seed, as_of):
+	"""Parents with a portal account ask leave for their children; the class teachers decide through the app, so
+	approved days become Excused and the parents who agreed get an SMS (Test mode). Does not commit."""
+	from smart_school import leave
+	from smart_school.school_calendar import SchoolCalendar
+	from smart_school.sms import send_due
+
+	rng = random.Random(f"{seed}-leave")
+	calendar = SchoolCalendar()
+	links = frappe.get_all(
+		"Guardian Student Link", filters={"parenttype": "Guardian"}, fields=["parent", "student"], order_by="parent, student"
+	)
+	portal = set(frappe.get_all("Guardian", filters={"user": ["is", "set"]}, pluck="name"))
+	active = dict(frappe.get_all("Student", filters={"status": "Active"}, fields=["name", "current_class"], as_list=True))
+	candidates = [l for l in links if l.parent in portal and l.student in active]
+	chosen = rng.sample(candidates, min(len(LEAVE_PLAN), len(candidates)))
+	counts, excused = {}, 0
+	for (status, offset, length), link in zip(LEAVE_PLAN, chosen):
+		class_name = active[link.student]
+		days = calendar.school_days(as_of + timedelta(days=offset), as_of + timedelta(days=offset + 21), class_name)
+		days = days[:length] or [as_of + timedelta(days=offset)]
+		doc = frappe.get_doc(
+			{
+				"doctype": "Leave Request",
+				"student": link.student,
+				"class": class_name,
+				"guardian": link.parent,
+				"from_date": days[0],
+				"to_date": days[-1],
+				"reason": rng.choice(LEAVE_REASONS),
+				"status": "Pending",
+			}
+		)
+		doc.flags.from_portal = True
+		doc.insert(ignore_permissions=True)
+		leave.notify_deciders(doc)
+		if status in ("Approved", "Rejected"):
+			teacher = frappe.db.get_value("Class", class_name, "class_teacher")
+			frappe.set_user(frappe.db.get_value("Teacher", teacher, "user") or "Administrator")
+			try:
+				note = "Apone haraka." if status == "Approved" else "Siku hizo ni za mitihani; afike shuleni."
+				leave.decide(doc.name, status, note)
+			finally:
+				frappe.set_user("Administrator")
+			if status == "Approved":
+				excused += frappe.db.count("Attendance", {"leave_request": doc.name})
+		elif status == "Cancelled":
+			doc.status = "Cancelled"
+			doc.flags.from_portal = True
+			doc.save(ignore_permissions=True)
+			leave.close_todos(doc)
+		counts[status] = counts.get(status, 0) + 1
+	send_due()  # the decision SMS, recorded in Test mode (in the quiet hours they wait for 07:00)
+	log(f"Leave requests: {sum(counts.values())}, {excused} attendance days excused")
+	return {"requests": dict(sorted(counts.items())), "attendance_excused": excused}
 
 
 def write_sms_demo(seed, as_of):

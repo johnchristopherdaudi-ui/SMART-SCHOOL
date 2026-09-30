@@ -66,7 +66,8 @@
   "calendar_section",
   "saturday_is_school_day",
   "calendar_column_break",
-  "attendance_completeness_min"
+  "attendance_completeness_min",
+  "leave_days_back"
  ],
  "fields": [
   {
@@ -475,13 +476,21 @@
    "label": "Attendance Completeness Warning Below",
    "default": "80",
    "description": "Early Warning notes a class whose attendance was taken on fewer of its school days"
+  },
+  {
+   "fieldname": "leave_days_back",
+   "fieldtype": "Int",
+   "label": "Leave Requests: Days Back",
+   "default": "7",
+   "non_negative": 1,
+   "description": "How many days back a parent may ask leave for (e.g. with a doctor's note)"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-01 12:00:00.000000",
+ "modified": "2026-10-01 16:00:00.000000",
  "modified_by": "Administrator",
  "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
  "name": "Smart School Settings",

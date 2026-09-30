@@ -9,7 +9,9 @@
   "date",
   "class",
   "status",
-  "term"
+  "term",
+  "leave_request",
+  "status_before_leave"
  ],
  "fields": [
   {
@@ -46,12 +48,29 @@
    "label": "Term",
    "options": "Term",
    "read_only": 1
+  },
+  {
+   "fieldname": "leave_request",
+   "fieldtype": "Link",
+   "label": "Leave Request",
+   "options": "Leave Request",
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "Excused by this approved leave"
+  },
+  {
+   "fieldname": "status_before_leave",
+   "fieldtype": "Data",
+   "label": "Status Before Leave",
+   "read_only": 1,
+   "hidden": 1,
+   "no_copy": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-01 14:00:00.000000",
+ "modified": "2026-10-01 16:00:00.000000",
  "modified_by": "Administrator",
  "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
  "name": "Attendance",

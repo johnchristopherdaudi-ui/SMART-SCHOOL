@@ -127,21 +127,10 @@ def get_sheet(class_name, date):
 
 
 def approved_leave(students, day):
-	"""Students with an approved leave covering the day (Part 3: Leave Request)."""
-	if not frappe.db.exists("DocType", "Leave Request"):
-		return set()
-	return set(
-		frappe.get_all(
-			"Leave Request",
-			filters={
-				"student": ["in", list(students) or [""]],
-				"status": "Approved",
-				"from_date": ["<=", day],
-				"to_date": [">=", day],
-			},
-			pluck="student",
-		)
-	)
+	"""{student: leave request} of approved leaves covering the day."""
+	from smart_school.leave import approved_leave_for
+
+	return approved_leave_for(students, day)
 
 
 @frappe.whitelist()
@@ -156,6 +145,7 @@ def save_sheet(class_name, date, entries):
 			"Attendance", filters={"student": ["in", list(members) or [""]], "date": day}, fields=["name", "student", "status"]
 		)
 	}
+	on_leave = approved_leave(list(members), day)
 	counts = {s: 0 for s in STATUSES}
 	created = updated = 0
 	for entry in entries:
@@ -172,8 +162,10 @@ def save_sheet(class_name, date, entries):
 				doc.save()
 				updated += 1
 			continue
-		frappe.get_doc(
-			{"doctype": "Attendance", "student": student, "date": day, "class": class_name, "status": status}
-		).insert()
+		values = {"doctype": "Attendance", "student": student, "date": day, "class": class_name, "status": status}
+		if status == "Excused" and student in on_leave:
+			# excused by the leave: withdrawing the leave turns it into Absent (no earlier status)
+			values.update(leave_request=on_leave[student], status_before_leave="")
+		frappe.get_doc(values).insert()
 		created += 1
 	return {"created": created, "updated": updated, "counts": counts, "term": term.name}

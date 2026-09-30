@@ -44,7 +44,8 @@ FEE_BEFORE_TERM = "Fee Reminder"
 FEE_OVERDUE = "Fee Overdue"
 ANNOUNCEMENT = "Announcement"
 EVENT_REMINDER = "Event Reminder"
-MESSAGE_TYPES = (RESULTS, RECEIPT, FEE_BEFORE_TERM, FEE_OVERDUE, ANNOUNCEMENT, EVENT_REMINDER)
+LEAVE_DECISION = "Leave Decision"
+MESSAGE_TYPES = (RESULTS, RECEIPT, FEE_BEFORE_TERM, FEE_OVERDUE, ANNOUNCEMENT, EVENT_REMINDER, LEAVE_DECISION)
 FEE_TYPES = (RECEIPT, FEE_BEFORE_TERM, FEE_OVERDUE)
 REFERENCE_DOCTYPE = {
 	RESULTS: "Exam",
@@ -53,6 +54,7 @@ REFERENCE_DOCTYPE = {
 	FEE_OVERDUE: "Term",
 	ANNOUNCEMENT: "Announcement",
 	EVENT_REMINDER: "School Event",
+	LEAVE_DECISION: "Leave Request",
 }
 # Records that stay inside the school: refused even if someone tries to queue them
 FORBIDDEN_DOCTYPES = (
@@ -92,6 +94,7 @@ LINKS = {
 	FEE_OVERDUE: "/ada",
 	ANNOUNCEMENT: "/matangazo",
 	EVENT_REMINDER: "/kalenda",
+	LEAVE_DECISION: "/ruhusa",
 }
 
 PLACEHOLDERS = {
@@ -101,6 +104,7 @@ PLACEHOLDERS = {
 	FEE_OVERDUE: ("shule", "mwanafunzi", "muhula", "salio", "siku", "kiungo"),
 	ANNOUNCEMENT: ("shule", "kichwa", "kiungo"),
 	EVENT_REMINDER: ("shule", "tukio", "tarehe", "kiungo"),
+	LEAVE_DECISION: ("shule", "mwanafunzi", "tarehe", "uamuzi", "kiungo"),
 }
 PLACEHOLDER_HELP = {
 	"shule": "school name for SMS (Settings)",
@@ -118,6 +122,7 @@ PLACEHOLDER_HELP = {
 	"siku": "days since the term started",
 	"kichwa": "announcement title (shortened to fit one SMS)",
 	"tukio": "the event's title (shortened to fit one SMS)",
+	"uamuzi": "'limeidhinishwa' (approved) or 'halikuidhinishwa' (not approved); never the reason",
 }
 DEFAULT_TEMPLATES = {
 	RESULTS: "{shule}: {mwanafunzi} - {mtihani}: wastani {wastani}%{division}. Zaidi: {kiungo}",
@@ -126,6 +131,7 @@ DEFAULT_TEMPLATES = {
 	FEE_OVERDUE: "{shule}: {mwanafunzi} ana deni la ada TZS {salio} ({muhula}, siku {siku}). Tafadhali lipa: {kiungo}",
 	ANNOUNCEMENT: "{shule}: Tangazo - {kichwa}. Soma zaidi: {kiungo}",
 	EVENT_REMINDER: "{shule}: Kumbusho - {tukio}, {tarehe}. Kalenda ya shule: {kiungo}",
+	LEAVE_DECISION: "{shule}: Ombi la ruhusa ya {mwanafunzi} ({tarehe}) {uamuzi}. Zaidi: {kiungo}",
 }
 # Long but real values: the template editor shows the message with these (after shortening, like a real one)
 LONG_VALUES = {
@@ -141,6 +147,7 @@ LONG_VALUES = {
 	"deni": "; deni la nyuma TZS 1,500,000",
 	"siku": "120",
 	"kichwa": "Mkutano wa wazazi na walimu wa Kidato cha Nne kuhusu maandalizi ya mtihani wa taifa",
+	"uamuzi": "halikuidhinishwa",
 	"tukio": "Mkutano wa wazazi na walimu wa Kidato cha Nne kuhusu maandalizi ya mtihani wa taifa",
 }
 
@@ -982,3 +989,21 @@ def send_event_reminders(on_date=None):
 		queue_messages(EVENT_REMINDER, doc.name, recipients, batch=f"Event {doc.name}")
 		if not doc.sms_sent_on:
 			doc.db_set("sms_sent_on", on_date)
+
+
+# ---------- leave requests ----------
+
+
+def queue_leave_decision(doc):
+	"""The answer to a leave request, to the parent who asked: approved or not, never the reason."""
+	if not doc.guardian or doc.status not in ("Approved", "Rejected"):
+		return []
+	guardian = frappe.get_all("Guardian", filters={"name": doc.guardian}, fields=["name", "full_name", "phone", "sms_opt_in"])
+	if not guardian:
+		return []
+	values = {
+		"mwanafunzi": doc.student_name,
+		"tarehe": event_date_text(doc.from_date, doc.to_date),
+		"uamuzi": "limeidhinishwa" if doc.status == "Approved" else "halikuidhinishwa",
+	}
+	return queue_messages(LEAVE_DECISION, doc.name, [(guardian[0], values, doc.student)])

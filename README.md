@@ -67,6 +67,17 @@ for decision making, and gives parents a Swahili portal with their children's re
 - Attendance is kept by the class teacher of the class, and by the Headmaster and System Manager for every class:
   on the doctype itself (list, form and API), not only in the page.
 
+**Leave requests (ruhusa)**
+- On the parent portal (`/parent-portal/ruhusa`, Swahili): a parent asks leave for one of their own children, for
+  dates up to *Leave Requests: Days Back* (7) days back, with a short reason and optionally a doctor's note (PDF or
+  picture, 5 MB at most, checked and kept private). They follow the status there, can withdraw a waiting request,
+  and get an SMS with the answer if they agreed to SMS (never the reason).
+- The class teacher gets a ToDo (the Headmaster when the class has none) and approves or rejects with a note for the
+  parent. Approved: the attendance recorded on the school days of the leave becomes Excused (its earlier status is
+  kept) and Class Attendance shows those students Excused. The Headmaster can withdraw an approved leave: the
+  attendance goes back (Absent for days first recorded as Excused because of it).
+- The reason and the file are seen by the Headmaster and that class's teacher only; attendance shows "Excused".
+
 **Staff**
 - Workspaces: **Headmaster**, **Academics** (teachers), **Finance** (accountant) and **School Settings**
   (system manager), each opened by default after login.
@@ -89,9 +100,9 @@ for decision making, and gives parents a Swahili portal with their children's re
 |---|---|
 | System Manager | Everything, including Smart School Settings, grading tables and terms |
 | Headmaster | Admissions, students, guardians, teachers, exams (publish), term results and comments, attendance of every class, school calendar, all reports, promotion |
-| Teacher | Enter/import marks for assigned subjects, discipline, class teacher comments, academic reports for own classes; attendance only as class teacher of the class |
+| Teacher | Enter/import marks for assigned subjects, discipline, class teacher comments, academic reports for own classes; attendance and leave requests only as class teacher of the class |
 | Accountant | Fee structures, fee payments (submit/cancel), fee reports |
-| Parent | Parent portal only (Website User) |
+| Parent | Parent portal only (Website User), including SMS consent and leave requests for their own children |
 
 ## Setup
 
@@ -156,6 +167,7 @@ A single suite: `bench --site test.localhost run-tests --module smart_school.tes
 | `test_interventions` | Snapshot, who sees and edits, reminders and card, Hatua column, matching, per-protocol and intention-to-treat, minimum sample, report warning |
 | `test_school_calendar` | School days (weekends, holidays, breaks, class events, Saturdays), terms and exams from their own dates, attendance on school days, completeness and the Early Warning note, desk and portal calendars, SMS reminders |
 | `test_class_attendance` | Class teacher only for their class on the doctype and the API, Headmaster everywhere; the page: classes per role, Present by default, recorded days, weekend and holiday warnings, future and between-terms days refused, saving and correcting without duplicates |
+| `test_leave` | A parent asks for their own child only, Swahili messages, private and checked files, withdrawing a waiting request; who sees reasons and files; approving excuses school days only, withdrawing restores, the attendance page shows the leave; the SMS never carries the reason |
 | `test_admission_form` | The public form in Swahili, values stored as before, Swahili messages for each mistake, desk entry unchanged |
 | `test_sms` | SMS parts (GSM-7 / UCS-2), placeholders, one SMS with long names, modes, consent (admission, portal, paper), numbers, quiet hours, limits, retries, expiry, once per exam, fee reminders and students who left, no sensitive SMS, who sees the outbox and report |
 
@@ -220,6 +232,7 @@ doctypes **SMS Outbox** and **SMS Template**; report **SMS Summary** (Headmaster
 | Fee Overdue | once, from 30 days after a term started (for 14 days, so old terms are not dug up), if still owed (switch, default off) | `{shule}: {mwanafunzi} ana deni la ada TZS {salio} ({muhula}, siku {siku}). Tafadhali lipa: {kiungo}` |
 | Announcement | the Headmaster presses *Also Send by SMS* | `{shule}: Tangazo - {kichwa}. Soma zaidi: {kiungo}` |
 | Event Reminder | daily, from *Days Before* a School Event with *Remind Parents by SMS* | `{shule}: Kumbusho - {tukio}, {tarehe}. Kalenda ya shule: {kiungo}` |
+| Leave Decision | a leave request is approved or rejected (to the parent who asked) | `{shule}: Ombi la ruhusa ya {mwanafunzi} ({tarehe}) {uamuzi}. Zaidi: {kiungo}` |
 
   `{wastani}` is the student's average in that exam; `{division}` is ", Division II" once every exam of the term is
   published, else nothing. Before-term reminders go to active students still at school; nobody gets a reminder
@@ -506,6 +519,12 @@ results message reads: *Mwanga SS: Abdallah Paulo Haule - Mock: wastani 56.6%, D
 &lt;host_name&gt;/matokeo* (the division shows because every exam of that term is published). The link uses the site's
 `host_name`: set it to the address parents use. The Form 4 parents' meeting of 16 October 2026 has an SMS reminder 3
 days before; the daily job writes it on 13 October.
+
+**Leave requests** (`demo_data.add_leave_demo`, own random numbers): 12 requests from parents with a portal account,
+decided by the class teachers through the app: 6 approved (11 attendance days became Excused), 2 rejected, 1
+withdrawn by the parent, 3 waiting (their class teachers have a ToDo). The 8 decisions gave 7 SMS in Test mode and 1
+Skipped (no consent). The demo's leaves were added after its attendance, so they excuse days recorded Present (10)
+and Late (1); in a school the leave comes first and the days are Excused when they are recorded.
 
 ### Limitations
 

@@ -29,7 +29,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Academic Reports",
-   "link_count": 12,
+   "link_count": 13,
    "onboard": 0,
    "type": "Card Break"
   },
@@ -96,6 +96,17 @@
    "link_count": 0,
    "link_to": "class-attendance",
    "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Leave Request",
+   "link_count": 0,
+   "link_to": "Leave Request",
+   "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
   },
@@ -300,7 +311,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-10-01 14:00:00.000000",
+ "modified": "2026-10-01 16:00:00.000000",
  "modified_by": "Administrator",
  "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
  "name": "Headmaster",

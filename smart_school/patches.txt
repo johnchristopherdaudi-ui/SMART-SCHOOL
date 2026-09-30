@@ -33,3 +33,5 @@ smart_school.patches.set_intervention_defaults
 smart_school.patches.set_sms_defaults
 smart_school.patches.create_fixed_holidays
 smart_school.patches.set_sms_defaults #event_reminder
+smart_school.patches.set_sms_defaults #leave_decision
+smart_school.patches.set_calendar_defaults

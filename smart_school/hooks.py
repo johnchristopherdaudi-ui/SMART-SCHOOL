@@ -70,6 +70,7 @@ website_redirects = [
 	{"source": "/ada", "target": "/parent-portal/fees"},
 	{"source": "/matangazo", "target": "/parent-portal/announcements"},
 	{"source": "/kalenda", "target": "/parent-portal/kalenda"},
+	{"source": "/ruhusa", "target": "/parent-portal/ruhusa"},
 ]
 
 # SMS providers ({name: class}); another app can add its own (see smart_school.sms_providers)
@@ -148,12 +149,14 @@ permission_query_conditions = {
 	"Student Intervention": "smart_school.interventions.get_permission_query",
 	"SMS Outbox": "smart_school.sms.get_permission_query",
 	"Attendance": "smart_school.class_attendance.get_permission_query",
+	"Leave Request": "smart_school.leave.get_permission_query",
 }
 
 has_permission = {
 	"Student Intervention": "smart_school.interventions.has_permission",
 	"SMS Outbox": "smart_school.sms.has_permission",
 	"Attendance": "smart_school.class_attendance.has_permission",
+	"Leave Request": "smart_school.leave.has_permission",
 }
 # DocType Class
 # ---------------

@@ -13,6 +13,7 @@ def after_install():
 	from smart_school.patches import (
 		create_external_exam_types,
 		create_fixed_holidays,
+		set_calendar_defaults,
 		seed_grading_tables,
 		set_grade_remarks,
 		set_risk_score_defaults,
@@ -25,6 +26,7 @@ def after_install():
 	create_external_exam_types.execute()  # District Exam, Regional Exam, Mock
 	set_sms_defaults.execute()  # SMS Off, price and limits, the Swahili templates
 	create_fixed_holidays.execute()  # national holidays on fixed dates, every year
+	set_calendar_defaults.execute()  # Monday to Friday, 80% attendance completeness, leave up to 7 days back
 
 	frappe.db.add_unique("Student Term Result", ["student", "term"], constraint_name="unique_student_term")
 	frappe.db.commit()
