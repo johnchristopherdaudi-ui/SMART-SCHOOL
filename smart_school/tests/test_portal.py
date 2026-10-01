@@ -3,6 +3,7 @@
 import json
 
 import frappe
+from frappe.tests.utils import FrappeTestCase
 
 from smart_school.fees import get_term_outstanding
 from smart_school.parent_dashboard import get_dashboard
@@ -106,3 +107,22 @@ class TestWorkspaces(SchoolTestCase):
 		for user, workspace in expected.items():
 			set_default_workspace(user=user)
 			self.assertEqual(frappe.db.get_value("User", user, "default_workspace"), workspace, user)
+
+
+class TestWorksOffline(FrappeTestCase):
+	def test_no_page_loads_scripts_or_styles_from_the_internet(self):
+		"""Charts and everything else come from the app (public/js/vendor), so the portal works without internet."""
+		import re
+		from pathlib import Path
+
+		app = Path(frappe.get_app_path("smart_school"))
+		external = re.compile(r"<(script|link)[^>]+(src|href)=[\"']https?://", re.I)
+		found = [
+			f"{path.relative_to(app)}:{i}"
+			for folder in ("www", "templates")
+			for path in (app / folder).rglob("*.html")
+			for i, line in enumerate(path.read_text().splitlines(), start=1)
+			if external.search(line)
+		]
+		self.assertEqual(found, [])
+		self.assertTrue((app / "public/js/vendor/chart-4.4.0.umd.min.js").exists())

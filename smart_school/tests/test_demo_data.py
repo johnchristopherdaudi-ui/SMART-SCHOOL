@@ -209,6 +209,14 @@ class TestDemoGuard(SchoolTestCase):
 			self.assertRaises(frappe.ValidationError, dd.assert_demo_site)
 			self.assertRaises(frappe.ValidationError, dd.generate, seed=1)
 
+	def test_presentation_set_up_only_on_a_demo_site(self):
+		from smart_school import demo_presentation
+
+		for site in ("jonbale", "test.localhost"):
+			with patch.object(frappe.local, "site", site):
+				self.assertRaises(frappe.ValidationError, demo_presentation.prepare)
+				self.assertRaises(frappe.ValidationError, demo_presentation.reset)
+
 	def test_refuses_jonbale_other_sites_and_a_site_with_data(self):
 		self.assert_refused("jonbale")
 		self.assert_refused("jonbale", {"allow_demo_data": 1})  # never, whatever the config says
