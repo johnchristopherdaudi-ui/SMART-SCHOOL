@@ -26,9 +26,9 @@ function decide(frm, decision) {
 				label: __("Note to the parent (Swahili)"),
 				description:
 					decision === "Approved"
-						? __("Attendance already recorded on the school days of the leave becomes Excused.")
+						? __("School days of the leave already recorded Absent become Excused; Present and Late stay.")
 						: decision === "Withdraw"
-						? __("The attendance excused by this leave goes back to what it was.")
+						? __("Only the days this leave excused go back to Absent.")
 						: "",
 			},
 		],

@@ -38,7 +38,7 @@ class SmartSchoolSettings(Document):
 		for fieldname in ("alert_identical_share", "alert_zero_share", "alert_round_share", "alert_zero_drop_from"):
 			if not 0 < (self.get(fieldname) or 0) <= 100:
 				frappe.throw(f"Marks alerts: {self.meta.get_label(fieldname)} must be between 1 and 100")
-		for fieldname in ("alert_class_z", "alert_student_z"):
+		for fieldname in ("alert_class_z", "alert_student_z", "alert_swap_z"):
 			if (self.get(fieldname) or 0) <= 0:
 				frappe.throw(f"Marks alerts: {self.meta.get_label(fieldname)} must be greater than 0")
 

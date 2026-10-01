@@ -73,9 +73,9 @@ for decision making, and gives parents a Swahili portal with their children's re
   picture, 5 MB at most, checked and kept private). They follow the status there, can withdraw a waiting request,
   and get an SMS with the answer if they agreed to SMS (never the reason).
 - The class teacher gets a ToDo (the Headmaster when the class has none) and approves or rejects with a note for the
-  parent. Approved: the attendance recorded on the school days of the leave becomes Excused (its earlier status is
-  kept) and Class Attendance shows those students Excused. The Headmaster can withdraw an approved leave: the
-  attendance goes back (Absent for days first recorded as Excused because of it).
+  parent. Approved: the school days of the leave already recorded Absent become Excused; Present and Late stay as
+  they are (the child came). Class Attendance shows the students on leave as Excused. The Headmaster can withdraw an
+  approved leave: only the records it changed, if still Excused, go back to Absent.
 - The reason and the file are seen by the Headmaster and that class's teacher only; attendance shows "Excused".
 
 **Staff**
@@ -159,7 +159,7 @@ A single suite: `bench --site test.localhost run-tests --module smart_school.tes
 | `test_portal` | Base template on every page, guest redirects, parent home page, dashboard, workspaces |
 | `test_tasks` | Risk score, insights, promotion tool, academic records |
 | `test_student_exit` | Exit date, fees only for terms that started before a student left, defaulters and portal rules |
-| `test_marks_alerts` | Every marks check, saving and auto-resolving alerts, publishing with warnings, who sees alerts |
+| `test_marks_alerts` | Every marks check (swapped marks as pairs too), saving and auto-resolving alerts, publishing with warnings, who sees alerts |
 | `test_demo_data` | Generator guard (never jonbale), reproducible seed, realistic links, a small school saved through the app |
 | `test_risk_model` | Features, labels, time split, bootstrap, decision, model file checks, ablation, predictions, data guard |
 | `test_early_warning` | Early Warning groups, class teacher scope, Emerging Risk card, rule-based fallback, nothing for parents |
@@ -275,8 +275,27 @@ can be switched off there, and their alerts close as *Auto-resolved* when the pa
 | Unusual Class Average | robust z-score (median and MAD of the class averages of at least 4 earlier exams of the subject in the same Form) > 3.5 **and** at least 10 points from the usual average. School exams are compared with school exams; an external exam (*External Exam* ticked on the Exam, with its type chosen from **External Exam Type**) only with earlier external exams of the same type, e.g. a District Exam with District Exams. With too little history of its kind only this check is skipped | Medium |
 | Unusual Student Change | the student's change minus the class's median change (residual): robust z > 4.5 **and** ≥ 20 points. A hard exam that lowers everyone raises nothing | Low (Medium from z ≥ 9) |
 | Dropped To Zero | ≥ 30% in the previous exam and 0 now (not when the class already has Many Zero Marks); one alert per student | Medium |
+| Possibly Swapped Marks | marks typed against each other's names: pairs of students, one up and one down, each with a robust z ≥ 3.5 (*Swapped Marks: z Above*) and ≥ 20 points more than the class, the smaller move at least half the larger. One alert per subject of an exam, listing every such pair (a student can be in several; the scripts tell which) | Medium |
 
 Class checks need at least 10 students; Dropped To Zero applies to any class size.
+
+*Why a pair check.* One swap moves two students by a similar amount in opposite directions; looking for that pair
+finds what the student-by-student check misses at z 4.5 without lowering it. Measured on 30 generated schools
+(seeds 1–29 and 42; each has 2 pairs swapped between the two weakest and the two strongest students of a class,
+120 students in all; the same code as the app, outside a site):
+
+| | Swapped students found | Schools with all 4 | Alerts not about the plant, 3 years | In the current and previous term |
+|---|---|---|---|---|
+| Unusual Student Change alone (z 4.5) | 52.5% | 5 of 30 | 10.0 | 1.8 |
+| Possibly Swapped Marks (z 3.5) | 78.3% | 18 of 30 | 6.5 (at most 12) | 1.2 (at most 4) |
+| Both | **79.2%** | 18 of 30 | 16.5 | 3.0 |
+
+For comparison, lowering the general check to z 3.5 finds 81.7% but raises 73.6 other alerts over 3 years; at z
+3.25 the pair check finds about 84%, with more alerts (about 24 pairs over 3 years before they are grouped into
+one alert per subject). Requiring that the swapped-back
+marks look ordinary, or a closer size ratio (0.7), lowered recall more than it lowered other alerts, so neither is
+used. In 3 of the 30 schools neither check finds anything; the demo school (seed 42) is one of them (z 3.4 and 3.3
+for the two who went up).
 
 **Integrity checks** always run and are never closed automatically:
 
@@ -389,7 +408,8 @@ dates), 23,715 exam results, 150,595 attendance days (school days only), 603 dis
 6–8 weekdays out of each term. The school takes attendance on every school day, so completeness is 100% in every
 class (the Attendance Completeness card shows 100%) and Early Warning shows no completeness note.
 
-**Marks alerts**: 25 alerts; every planted problem was found except the swapped marks:
+**Marks alerts**: 33 alerts (25, and 8 *Possibly Swapped Marks* since that check was added); every planted problem
+was found except the swapped marks:
 
 | Planted | Found |
 |---|---|
@@ -398,10 +418,10 @@ class (the Attendance Completeness card shows 100%) and Early Warning shows no c
 | Marks typed against the wrong names (2 pairs swapped, Form 2 Mathematics, Term 2 2026) | **0 of 4** |
 | Entered by an unassigned teacher; changed after publishing (teacher and Headmaster); results unpublished | yes (each) |
 
-The swapped marks were missed again, as in the run before: the four students' robust z were 3.4, 3.3, −2.6 and −4.2
-against the threshold of 4.5, with an ordinary spread this time (MAD 10 points in Mathematics, 7–9 in the other
-subjects). Swapping the weakest and strongest students of a class moves each by far, but at z 4.5 that is often not
-far enough. Not planted: 12 *Unusual Student Change* alerts over three years (1 in 2026) and one *Unusual Class
+The swapped marks were missed again: the four students' robust z were 3.4, 3.3, −2.6 and −4.2, under 4.5 for the
+general check and, for the two who went up, just under 3.5 for the pair check (MAD 10 points in Mathematics, 7–9 in
+the other subjects); the 30 schools above show this happens in about 1 school in 10. The pair check raised 8
+alerts over three years in other classes (none in Term 2 or 3 2026). Not planted: 12 *Unusual Student Change* alerts over three years (1 in 2026) and one *Unusual Class
 Average* (Form 1 Kiswahili, Annual 2025: 44.2% against a median of 54.3% over 5 earlier exams); no *Dropped To Zero*.
 One *Changed After Publish* (Physics) follows from the mark corrected while the Form 2 Terminal exam was unpublished.
 
@@ -520,11 +540,11 @@ results message reads: *Mwanga SS: Abdallah Paulo Haule - Mock: wastani 56.6%, D
 `host_name`: set it to the address parents use. The Form 4 parents' meeting of 16 October 2026 has an SMS reminder 3
 days before; the daily job writes it on 13 October.
 
-**Leave requests** (`demo_data.add_leave_demo`, own random numbers): 12 requests from parents with a portal account,
-decided by the class teachers through the app: 6 approved (11 attendance days became Excused), 2 rejected, 1
-withdrawn by the parent, 3 waiting (their class teachers have a ToDo). The 8 decisions gave 7 SMS in Test mode and 1
-Skipped (no consent). The demo's leaves were added after its attendance, so they excuse days recorded Present (10)
-and Late (1); in a school the leave comes first and the days are Excused when they are recorded.
+**Leave requests** (`demo_data.add_leave_demo`, own random numbers): 12 requests from parents with a portal account.
+Nine are for days the child was away: a run of 2–3 school days in a row recorded Absent in the last six weeks (32
+children had one). The class teachers decided them through the app: 6 approved (12 Absent days became Excused), 2
+rejected (their days stay Absent), 1 withdrawn by the parent. Three more wait for days ahead, and their class
+teachers have a ToDo. The 8 decisions gave 8 SMS in Test mode.
 
 ### Limitations
 
@@ -554,10 +574,10 @@ and Late (1); in a school the leave comes first and the days are Excused when th
   still run). The type is chosen from the **External Exam Type** list (District Exam, Regional Exam and Mock to
   start with; the Headmaster can add more, and spellings that differ only in case or spaces are refused), so the
   history of a kind is not split by typing.
-- **Marks alerts** were tuned on synthetic data. The student-change check raised 12 alerts over three years of a
-  300-student school, and at z 4.5 it misses swapped marks: in the last two runs it missed all 4 (z 3.0 to 3.6, then
-  −2.6 to −4.2), even with an ordinary spread. A lower threshold would catch them at the cost of more alerts on
-  genuine changes; the threshold is a setting (*Student Change: z Above*) left at 4.5 by decision.
+- **Marks alerts** were tuned on synthetic data. The student-change check (z 4.5, left there by decision) finds
+  about half of the swapped students; with the pair check about 4 in 5, for about 2 more alerts a year in a
+  300-student school. The planted swaps are the easiest kind (the weakest and the strongest students); a swap
+  between two students with similar marks cannot be seen by any statistics, and does little harm.
 
 ## Demo accounts (site `jonbale`)
 

@@ -191,6 +191,18 @@ class TestDemoCalendar(FrappeTestCase):
 			self.assertNotIn(e["date"], off)
 
 
+class TestDemoLeave(FrappeTestCase):
+	def test_leave_goes_on_runs_of_absent_school_days(self):
+		days = [date(2026, 9, d) for d in (14, 15, 16, 17, 18, 21, 22, 23, 24, 25)]  # Mon-Fri, two weeks
+		absent = {date(2026, 9, d) for d in (15, 16, 18, 21, 22, 23, 24)}
+		# 15-16 (2 days); 18 alone is too short; 18 then the weekend then 21-24 run on: cut to 3
+		self.assertEqual(
+			dd.absence_runs(absent, days),
+			[[date(2026, 9, 15), date(2026, 9, 16)], [date(2026, 9, 18), date(2026, 9, 21), date(2026, 9, 22)]],
+		)
+		self.assertEqual(dd.absence_runs({date(2026, 9, 15)}, days), [])
+
+
 class TestDemoGuard(SchoolTestCase):
 	def assert_refused(self, site, conf=None):
 		with patch.object(frappe.local, "site", site), patch.dict(frappe.conf, conf or {}):

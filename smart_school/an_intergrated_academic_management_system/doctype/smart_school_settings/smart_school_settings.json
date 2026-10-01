@@ -44,6 +44,7 @@
   "alert_class_min_diff",
   "alert_student_z",
   "alert_student_min_jump",
+  "alert_swap_z",
   "alert_zero_drop_from",
   "sms_section",
   "sms_mode",
@@ -484,13 +485,20 @@
    "default": "7",
    "non_negative": 1,
    "description": "How many days back a parent may ask leave for (e.g. with a doctor's note)"
+  },
+  {
+   "default": "3.5",
+   "fieldname": "alert_swap_z",
+   "fieldtype": "Float",
+   "label": "Swapped Marks: z Above",
+   "description": "Two students who moved by a similar, unusual amount in opposite directions (lower than Student Change: z Above, as a pair is rarer than one student)"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-01 16:00:00.000000",
+ "modified": "2026-10-01 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "AN INTERGRATED ACADEMIC MANAGEMENT SYSTEM",
  "name": "Smart School Settings",

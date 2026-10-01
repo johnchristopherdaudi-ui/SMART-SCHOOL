@@ -5,9 +5,9 @@
   kept private). The class teacher gets a ToDo; without one, the Headmaster(s).
 - The class teacher of the student's class, or the Headmaster / System Manager, approves or rejects, with a short
   note for the parent. The parent sees the status on the portal, and gets an SMS if they agreed to SMS.
-- Approved: the attendance already recorded on the school days of the period becomes Excused (its earlier status
-  is kept); days recorded later are shown Excused in Class Attendance. Withdrawn by the Headmaster afterwards: those
-  records go back to what they were (Absent for days first recorded as Excused because of the leave).
+- Approved: the school days of the period already recorded Absent become Excused; Present and Late stay as they are
+  (the child came). Days recorded later are shown Excused in Class Attendance. Withdrawn by the Headmaster
+  afterwards: only the records the leave changed (and still Excused) go back to Absent.
 - The reason and the file are seen by the Headmaster and the class teacher only (and the parent who wrote them);
   attendance shows "Excused", nothing more."""
 
@@ -285,31 +285,32 @@ def withdraw(name, note=None):
 
 
 def excuse_attendance(doc):
-	"""The records already there on the school days of the leave become Excused; the earlier status is kept."""
+	"""The school days of the leave already recorded Absent become Excused (and remember it); a child recorded
+	Present or Late came to school, so those records stay as they are."""
 	calendar = SchoolCalendar()
+	changed = 0
 	for r in frappe.get_all(
 		"Attendance",
-		filters={"student": doc.student, "date": ["between", [doc.from_date, doc.to_date]]},
-		fields=["name", "date", "status", "class"],
+		filters={"student": doc.student, "date": ["between", [doc.from_date, doc.to_date]], "status": "Absent"},
+		fields=["name", "date", "class"],
 	):
 		if not calendar.is_school_day(r.date, r["class"]):
 			continue
 		frappe.db.set_value(
-			"Attendance",
-			r.name,
-			{"status": "Excused", "leave_request": doc.name, "status_before_leave": r.status},
+			"Attendance", r.name, {"status": "Excused", "leave_request": doc.name, "status_before_leave": "Absent"}
 		)
+		changed += 1
+	return changed
 
 
 def restore_attendance(doc):
-	for r in frappe.get_all(
-		"Attendance", filters={"leave_request": doc.name}, fields=["name", "status_before_leave"]
-	):
-		frappe.db.set_value(
-			"Attendance",
-			r.name,
-			{"status": r.status_before_leave or "Absent", "leave_request": None, "status_before_leave": None},
-		)
+	"""Only what the leave changed goes back: records it excused that are still Excused return to Absent (a record
+	corrected since, e.g. to Present, is left alone and just unlinked)."""
+	for r in frappe.get_all("Attendance", filters={"leave_request": doc.name}, fields=["name", "status"]):
+		values = {"leave_request": None, "status_before_leave": None}
+		if r.status == "Excused":
+			values["status"] = "Absent"
+		frappe.db.set_value("Attendance", r.name, values)
 
 
 def approved_leave_for(students, day):

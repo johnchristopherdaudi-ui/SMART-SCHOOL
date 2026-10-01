@@ -165,7 +165,7 @@ def save_sheet(class_name, date, entries):
 		values = {"doctype": "Attendance", "student": student, "date": day, "class": class_name, "status": status}
 		if status == "Excused" and student in on_leave:
 			# excused by the leave: withdrawing the leave turns it into Absent (no earlier status)
-			values.update(leave_request=on_leave[student], status_before_leave="")
+			values.update(leave_request=on_leave[student], status_before_leave="Absent")
 		frappe.get_doc(values).insert()
 		created += 1
 	return {"created": created, "updated": updated, "counts": counts, "term": term.name}

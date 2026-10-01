@@ -816,21 +816,28 @@ LEAVE_REASONS = (
 	"Harusi ya kaka yake",
 	"Kliniki ya meno",
 )
-# (status, first day as days after as_of, school days long)
-LEAVE_PLAN = (
-	("Approved", -18, 2),
-	("Approved", -15, 1),
-	("Approved", -11, 3),
-	("Approved", -8, 2),
-	("Approved", -4, 1),
-	("Approved", -2, 2),
-	("Rejected", -13, 1),
-	("Rejected", -6, 2),
-	("Cancelled", -9, 1),
-	("Pending", 1, 2),
-	("Pending", 3, 1),
-	("Pending", 6, 3),
-)
+# Requests for days the student was away: a run of 2-3 consecutive school days recorded Absent in the last weeks
+LEAVE_PAST = ("Approved",) * 6 + ("Rejected",) * 2 + ("Cancelled",)
+LEAVE_LOOKBACK_DAYS = 42
+LEAVE_RUN = (2, 3)  # school days in a row
+# Requests still waiting, for days ahead: (first school day as days after as_of, school days long)
+LEAVE_AHEAD = ((1, 2), (3, 1), (6, 3))
+
+
+def absence_runs(absent, school_days, lengths=LEAVE_RUN):
+	"""Runs of consecutive school days (in the class's calendar) all recorded Absent, cut to the longest allowed
+	length; [] when there is none of at least the shortest length."""
+	runs, current = [], []
+	for day in school_days:
+		if day in absent:
+			current.append(day)
+			continue
+		if len(current) >= min(lengths):
+			runs.append(current[: max(lengths)])
+		current = []
+	if len(current) >= min(lengths):
+		runs.append(current[: max(lengths)])
+	return runs
 
 
 def add_leave_demo():
@@ -849,8 +856,9 @@ def add_leave_demo():
 
 
 def write_leave_demo(seed, as_of):
-	"""Parents with a portal account ask leave for their children; the class teachers decide through the app, so
-	approved days become Excused and the parents who agreed get an SMS (Test mode). Does not commit."""
+	"""Parents with a portal account ask leave for their children: for days the child was away (a run of 2-3
+	school days recorded Absent), and a few for days ahead. The class teachers decide through the app, so approved
+	Absent days become Excused and the parents who agreed get an SMS (Test mode). Does not commit."""
 	from smart_school import leave
 	from smart_school.school_calendar import SchoolCalendar
 	from smart_school.sms import send_due
@@ -863,12 +871,34 @@ def write_leave_demo(seed, as_of):
 	portal = set(frappe.get_all("Guardian", filters={"user": ["is", "set"]}, pluck="name"))
 	active = dict(frappe.get_all("Student", filters={"status": "Active"}, fields=["name", "current_class"], as_list=True))
 	candidates = [l for l in links if l.parent in portal and l.student in active]
-	chosen = rng.sample(candidates, min(len(LEAVE_PLAN), len(candidates)))
+
+	since = as_of - timedelta(days=LEAVE_LOOKBACK_DAYS)
+	absent = {}
+	for r in frappe.get_all(
+		"Attendance",
+		filters={"status": "Absent", "date": ["between", [since, as_of]], "student": ["in", [c.student for c in candidates] or [""]]},
+		fields=["student", "date"],
+	):
+		absent.setdefault(r.student, set()).add(getdate(r.date))
+	school_days = {c: calendar.school_days(since, as_of, c) for c in set(active.values())}
+	with_runs = []
+	for link in candidates:
+		runs = absence_runs(absent.get(link.student, set()), school_days[active[link.student]])
+		if runs:
+			with_runs.append((link, rng.choice(runs)))
+
+	past = rng.sample(with_runs, min(len(LEAVE_PAST), len(with_runs)))
+	used = {link.student for link, _ in past}
+	ahead_links = rng.sample([l for l in candidates if l.student not in used], len(LEAVE_AHEAD))
+	requests = [(status, link, days) for status, (link, days) in zip(LEAVE_PAST, past)]
+	for (offset, length), link in zip(LEAVE_AHEAD, ahead_links):
+		start = as_of + timedelta(days=offset)
+		days = calendar.school_days(start, start + timedelta(days=21), active[link.student])[:length]
+		requests.append(("Pending", link, days))
+
 	counts, excused = {}, 0
-	for (status, offset, length), link in zip(LEAVE_PLAN, chosen):
+	for status, link, days in requests:
 		class_name = active[link.student]
-		days = calendar.school_days(as_of + timedelta(days=offset), as_of + timedelta(days=offset + 21), class_name)
-		days = days[:length] or [as_of + timedelta(days=offset)]
 		doc = frappe.get_doc(
 			{
 				"doctype": "Leave Request",
@@ -888,7 +918,7 @@ def write_leave_demo(seed, as_of):
 			teacher = frappe.db.get_value("Class", class_name, "class_teacher")
 			frappe.set_user(frappe.db.get_value("Teacher", teacher, "user") or "Administrator")
 			try:
-				note = "Apone haraka." if status == "Approved" else "Siku hizo ni za mitihani; afike shuleni."
+				note = "Apone haraka." if status == "Approved" else "Sababu haitoshi; tafadhali onana na mwalimu wa darasa."
 				leave.decide(doc.name, status, note)
 			finally:
 				frappe.set_user("Administrator")
@@ -901,8 +931,13 @@ def write_leave_demo(seed, as_of):
 			leave.close_todos(doc)
 		counts[status] = counts.get(status, 0) + 1
 	send_due()  # the decision SMS, recorded in Test mode (in the quiet hours they wait for 07:00)
-	log(f"Leave requests: {sum(counts.values())}, {excused} attendance days excused")
-	return {"requests": dict(sorted(counts.items())), "attendance_excused": excused}
+	log(f"Leave requests: {sum(counts.values())}, {excused} Absent days excused")
+	return {
+		"requests": dict(sorted(counts.items())),
+		"absent_days_excused": excused,
+		"past_requests_on_absent_runs": len(past),
+		"students_with_a_run": len(with_runs),
+	}
 
 
 def write_sms_demo(seed, as_of):
@@ -1544,16 +1579,21 @@ def make_manifest(ctx):
 		# Swapped marks send the strong students to 0: they get the Dropped To Zero alert instead
 		types = [plant["alert_type"]]
 		if plant["alert_type"] == "Unusual Student Change":
-			types.append("Dropped To Zero")
+			types += ["Dropped To Zero", "Possibly Swapped Marks"]
 		filters = {"alert_type": ["in", types], "exam": exam}
 		if plant["alert_type"] != "Results Unpublished":
 			filters["subject"] = plant["subject"]
-		found = frappe.get_all("Marks Alert", filters=filters, pluck="student")
+		alerts = frappe.get_all("Marks Alert", filters=filters, fields=["alert_type", "student", "evidence"])
+		found = set()
+		for alert in alerts:
+			found.add(alert.student)
+			if alert.alert_type == "Possibly Swapped Marks":  # it lists its students in the evidence
+				found.update(json.loads(alert.evidence).get("students") or [])
 		students = [ctx.student_names[s] for s in plant["students"]]
 		if plant["alert_type"] in ("Unusual Student Change", "Dropped To Zero"):
 			detected = sorted(s for s in found if s in students) == sorted(students)
 		else:
-			detected = bool(found)
+			detected = bool(alerts)
 		plants.append(
 			{
 				"alert_type": plant["alert_type"],

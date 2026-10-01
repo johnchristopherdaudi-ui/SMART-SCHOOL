@@ -14,6 +14,7 @@ def after_install():
 		create_external_exam_types,
 		create_fixed_holidays,
 		set_calendar_defaults,
+		set_swap_alert_default,
 		seed_grading_tables,
 		set_grade_remarks,
 		set_risk_score_defaults,
@@ -27,6 +28,7 @@ def after_install():
 	set_sms_defaults.execute()  # SMS Off, price and limits, the Swahili templates
 	create_fixed_holidays.execute()  # national holidays on fixed dates, every year
 	set_calendar_defaults.execute()  # Monday to Friday, 80% attendance completeness, leave up to 7 days back
+	set_swap_alert_default.execute()  # Possibly Swapped Marks at z 3.5
 
 	frappe.db.add_unique("Student Term Result", ["student", "term"], constraint_name="unique_student_term")
 	frappe.db.commit()

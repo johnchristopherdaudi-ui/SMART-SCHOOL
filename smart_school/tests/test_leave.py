@@ -215,3 +215,29 @@ class TestDeciding(LeaveTestCase):
 		self.assertNotIn("Msiba", rows[0].message)
 		self.assertTrue(rows[0].message.endswith("/ruhusa"))
 		self.assertEqual(rows[0].segments, 1)
+
+
+class TestOnlyAbsentDays(LeaveTestCase):
+	def test_only_absent_days_are_excused_and_only_they_go_back(self):
+		end = getdate(add_days(today(), 21))  # recorded days ahead too, so four school days fit
+		days = SchoolCalendar().school_days(self.start, end, "_Test FORM 2")
+		absent, present, late, corrected = (
+			self.attendance("e", day, status) for day, status in zip(days, ("Absent", "Present", "Late", "Absent"))
+		)
+		name = self.ask(PARENT_2, "e", end=end)
+		with as_user(TEACHER_2):
+			leave.decide(name, "Approved")
+
+		state = lambda record: frappe.db.get_value("Attendance", record.name, ["status", "leave_request"])
+		self.assertEqual(state(absent), ("Excused", name))
+		self.assertEqual(state(corrected), ("Excused", name))
+		self.assertEqual(state(present), ("Present", None))  # the child came: nothing to excuse
+		self.assertEqual(state(late), ("Late", None))
+
+		frappe.db.set_value("Attendance", corrected.name, "status", "Present")  # corrected after the approval
+		with enforce_roles(), as_user(HEADMASTER):
+			leave.withdraw(name)
+		self.assertEqual(state(absent), ("Absent", None))  # what the leave changed goes back
+		self.assertEqual(state(corrected), ("Present", None))  # the correction stays
+		self.assertEqual(state(present), ("Present", None))
+		self.assertEqual(state(late), ("Late", None))

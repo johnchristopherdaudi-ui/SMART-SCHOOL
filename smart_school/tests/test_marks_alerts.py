@@ -37,7 +37,9 @@ SETTINGS = frappe._dict(
 	student_z=3.5,
 	student_min_jump=20,
 	zero_drop_from=30,
+	swap_z=3.5,
 )
+SPREAD = [-10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10, 1]  # changes of an ordinary class: MAD about 6 points
 NATURAL = [23, 37, 41, 48, 52, 56, 61, 64, 68, 73, 79, 88]
 SIX_ALIKE = [50] * 6 + [23, 37, 41, 62, 68, 79]
 CHECK_EXAM = "smart_school.marks_alerts.check_exam"
@@ -134,6 +136,43 @@ class TestStatistics(FrappeTestCase):
 		self.assertEqual(
 			[f for f in ma.check_student_changes(pairs, strict, class_has_many_zeros=True)], []
 		)
+
+	def test_swapped_marks_are_found_as_a_pair(self):
+		pairs = {f"S{i}": (50, 50 + c, "E0") for i, c in enumerate(SPREAD)}
+		pairs["WEAK"] = (30, 66, "E0")  # +36: robust z about 4, the strong student's mark
+		pairs["STRONG"] = (70, 33, "E0")  # -37: the weak student's mark
+		general = frappe._dict(SETTINGS, student_z=4.5)
+		self.assertEqual(ma.check_student_changes(pairs, general), [])  # neither is unusual enough alone
+		findings = ma.check_swapped_marks(pairs, general)
+		self.assertEqual(types(findings), [ma.SWAPPED])
+		e = findings[0][2]
+		self.assertEqual(e["students"], ["STRONG", "WEAK"])
+		pair = e["pairs"][0]
+		self.assertEqual((pair["up"], pair["down"], pair["up_marks"], pair["down_marks"]), ("WEAK", "STRONG", [30, 66], [70, 33]))
+		self.assertTrue(all(abs(z) < 1 for z in pair["robust_z_swapped_back"]))  # the other way round, both ordinary
+
+		# Two swaps in one class (a bigger one, so four big moves do not widen the spread much): one alert
+		pairs = {f"S{i}": (50, 50 + c, "E0") for i, c in enumerate(SPREAD * 2)}
+		pairs.update({"WEAK": (30, 66, "E0"), "STRONG": (70, 33, "E0"), "WEAK2": (32, 69, "E0"), "STRONG2": (68, 31, "E0")})
+		findings = ma.check_swapped_marks(pairs, general)
+		self.assertEqual(len(findings), 1)
+		self.assertEqual(findings[0][2]["students"], ["STRONG", "STRONG2", "WEAK", "WEAK2"])
+
+	def test_swapped_marks_need_a_partner_of_similar_size(self):
+		base = {f"S{i}": (50, 50 + c, "E0") for i, c in enumerate(SPREAD)}
+		both_up = {**base, "A": (30, 66, "E0"), "B": (35, 72, "E0")}
+		self.assertEqual(ma.check_swapped_marks(both_up, SETTINGS), [])
+		small_partner = {**base, "A": (30, 66, "E0"), "B": (60, 45, "E0")}  # -15: too small to be the other half
+		self.assertEqual(ma.check_swapped_marks(small_partner, SETTINGS), [])
+		unequal = {**base, "A": (30, 66, "E0"), "B": (95, 5, "E0")}  # -90 against +36: not a swap of the two
+		self.assertEqual(ma.check_swapped_marks(unequal, SETTINGS), [])
+		dropped_to_zero = {**base, "A": (30, 66, "E0"), "B": (40, 0, "E0")}  # a missed exam: its own alert
+		self.assertEqual(ma.check_swapped_marks(dropped_to_zero, SETTINGS), [])
+		quiet = {f"S{i}": (50, 50 + c / 5, "E0") for i, c in enumerate(SPREAD)}  # tiny MAD: z is high, the jump is not
+		quiet.update({"A": (40, 55, "E0"), "B": (60, 45, "E0")})
+		self.assertEqual(ma.check_swapped_marks(quiet, SETTINGS), [])
+		small_class = {k: v for k, v in list({**base, "A": (30, 66, "E0"), "B": (70, 33, "E0")}.items())[-8:]}
+		self.assertEqual(ma.check_swapped_marks(small_class, SETTINGS), [])
 
 	def test_student_change_needs_a_minimum_jump(self):
 		changes = [-1, 1] * 5 + [0, 10]  # z of the last one is about 6.4, but it moved only 9.5 points more
@@ -279,6 +318,26 @@ class TestMarksAlerts(SchoolTestCase):
 			frappe.db.get_value("Exam", evidence["previous_exam"], "exam_name"), "_Test MA H4"
 		)
 		self.assertEqual(evidence["class_median_change"], 24)
+
+	def test_swapped_marks_alert_names_both_and_resolves_when_corrected(self):
+		earlier = make_exam("_Test MA Swap Before", "_Test T2", "_Test FORM 1")
+		self.enter(earlier, "_T GEOGRAPHY", NATURAL)
+		exam = make_exam("_Test MA Swap Now", "_Test T3", "_Test FORM 1")
+		variation = [0, 3, -4, 5, -2, 6, -5, 2, -6, 4, -3, 0]  # an ordinary class: some up, some down
+		marks = [m + 2 + v for m, v in zip(NATURAL, variation)]
+		marks[0], marks[11] = marks[11], marks[0]  # 25% and 90% typed against each other's names
+		results = self.enter(exam, "_T GEOGRAPHY", marks)
+		ma.run_exam_checks(exam)
+		swapped = self.alerts(exam, alert_type=ma.SWAPPED)
+		self.assertEqual(len(swapped), 1)
+		self.assertEqual(set(json.loads(swapped[0].evidence)["students"]), {self.students[0], self.students[11]})
+		self.assertIn("_T GEOGRAPHY marks may have been typed against each other's names", frappe.db.get_value("Marks Alert", swapped[0].name, "message"))
+
+		self.amend(frappe.get_doc("Exam Result", results[0].name), NATURAL[0] + 2)
+		self.amend(frappe.get_doc("Exam Result", {"exam": exam, "student": self.students[11], "docstatus": 1}), NATURAL[11] + 2)
+		# corrected: the pair alert is gone (the general check may still see an unusual student on its own)
+		ma.run_exam_checks(exam)
+		self.assertEqual(self.alerts(exam, alert_type=ma.SWAPPED)[0].status, "Auto-resolved")
 
 	def test_many_zeros_in_a_class_raise_one_alert_not_one_per_student(self):
 		earlier = make_exam("_Test MA Zero Before", "_Test T2", "_Test FORM 1")
